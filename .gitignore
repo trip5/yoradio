@@ -1,4 +1,10 @@
 yoRadio/mqttoptions.h
 yoRadio/mytheme.h
 yoRadio/myoptions.h
+.pio/
+.vscode/
 *Thumbs.db
+*.url
+TODO.txt
+platformio.ini
+.gitignore
