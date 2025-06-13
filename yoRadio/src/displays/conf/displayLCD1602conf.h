@@ -45,7 +45,6 @@ const char         numtxtFmt[]    PROGMEM = "%d";
 const char        bitrateFmt[]    PROGMEM = "%d";
 //const char        bootstrFmt[]    PROGMEM = "Wi-fi: %s";
 
-
 /* MOVES  */                             /* { left, top, width } */
 const MoveConfig   metaMove       PROGMEM = { 0, 0, MAX_WIDTH };
 #endif
