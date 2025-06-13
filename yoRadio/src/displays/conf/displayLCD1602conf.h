@@ -43,8 +43,7 @@ const ProgressConfig  bootPrgConf  PROGMEM = { 250, 10, 4 };
 /* STRINGS  */
 const char         numtxtFmt[]    PROGMEM = "%d";
 const char        bitrateFmt[]    PROGMEM = "%d";
-//const char        bootstrFmt[]    PROGMEM = ""Wi-fi: %s";
-
+//const char        bootstrFmt[]    PROGMEM = "Wi-fi: %s";
 
 /* MOVES  */                             /* { left, top, width } */
 const MoveConfig   metaMove       PROGMEM = { 0, 0, MAX_WIDTH };
