@@ -6048,7 +6048,8 @@ int8_t Audio::parseFlacComment(uint8_t *inbuf, int16_t nBytes){
     uint8_t  blockType = 0;
     uint16_t s_f_lastMetaDataBlock = 0;
     uint16_t s_flacRemainBlockPicLen = 0;
-    char*    vb[2] = {0}; 					// vorbis comment
+    //char*    vb[2] = {0}; 					// vorbis comment (original Maleksma, warning: iteration 2 invokes undefined behavior )
+    char*    vb[8] = {0}; 		                // vorbis comment, matches loop
 
 //    enum {streamInfo, padding, application, seekTable, vorbisComment, cueSheet, picture};
 
