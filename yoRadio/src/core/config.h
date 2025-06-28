@@ -19,9 +19,21 @@
 #ifndef BUFLEN
   #define BUFLEN            250
 #endif
+#ifdef ESPFILEUPDATER_USERAGENT
+  #undef ESPFILEUPDATER_USERAGENT
+#endif
+#define ESPFILEUPDATER_USERAGENT "yoRadio/" YOVERSION "(" YOURL ")"  // used as a user-agent string for downloading with ESPFileUpdater
+
+#ifdef ESPFILEUPDATER_DEBUG
+  #define ESPFILEUPDATER_VERBOSE true
+#else
+  #define ESPFILEUPDATER_VERBOSE false
+#endif
+
 #define PLAYLIST_PATH     "/data/playlist.csv"
 #define SSIDS_PATH        "/data/wifi.csv"
 #define TMP_PATH          "/data/tmpfile.txt"
+#define TMP2_PATH         "/data/tmpfile2.txt"
 #define INDEX_PATH        "/data/index.dat"
 
 #define PLAYLIST_SD_PATH     "/data/playlistsd.csv"
@@ -50,6 +62,7 @@
 #if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 0, 0)
   #define ESP_ARDUINO_3 1
 #endif
+
 enum playMode_e      : uint8_t  { PM_WEB=0, PM_SDCARD=1 };
 enum BitrateFormat { BF_UNCNOWN, BF_MP3, BF_AAC, BF_FLAC, BF_OGG, BF_WAV, BF_VOR, BF_OPU };
 
@@ -139,7 +152,7 @@ struct config_t // specify defaults here (defaults are NOT saved to Prefs)
   uint16_t  screensaverTimeout = 20;
   bool      screensaverBlank = false;
   bool      screensaverPlayingEnabled = false;
-  uint16_t  screensaverPlayingTimeout = 5;
+  uint16_t  screensaverPlayingTimeout = 300;
   bool      screensaverPlayingBlank = false;
   char      mdnsname[24] = "";
   bool      skipPlaylistUpDown = false;
@@ -219,6 +232,8 @@ class Config {
     void setStation(const char* station);
     bool parseCSV(const char* line, char* name, char* url, int &ovol);
     bool parseJSON(const char* line, char* name, char* url, int &ovol);
+    bool parseCSVnew(const char* line, char* name, char* url, int &ovol);
+    bool parseJSONnew(const char* line, char* name, char* url, int &ovol);
     bool parseWsCommand(const char* line, char* cmd, char* val, uint8_t cSize);
     bool parseSsid(const char* line, char* ssid, char* pass);
     void loadStation(uint16_t station);
@@ -229,6 +244,8 @@ class Config {
     void setBitrateFormat(BitrateFormat fmt) { configFmt = fmt; }
     void initPlaylist();
     void indexPlaylist();
+    void updateTZjson(void* param);
+    void updateRadioBrowserServersjson();
     #ifdef USE_SD
       void initSDPlaylist();
       void changeMode(int newmode=-1);
@@ -315,6 +332,10 @@ class Config {
       }
       return chipId;
     }
+    void printFix(Print &out, const char *src);
+    void printFix(Print &out, const String &src);
+    void printFix(Print &out, char c);
+    void startAsyncServicesButWait();
   private:
     bool _bootDone;
     #if RTCSUPPORTED

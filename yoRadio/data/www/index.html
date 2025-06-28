@@ -79,8 +79,8 @@
       </div><!--player-->
       <div id="pleditorwrap" class="hidden">
         <div id="pleditor">
-          <h2>Playlist Editor<span onclick="showEditor()"></span></h2>
-          <div id="pleheader"><span class="space"><input type="checkbox" onclick="selectAll(this)" /></span><span class="plename">Name</span><span class="pleurl">URL</span><span class="pleovol">Ovol</span></div>
+          <h2><span class="playerbytton navbutton search" data-name="search"></span>Playlist Editor<span class="close" onclick="showEditor()"></span></h2>
+          <div id="pleheader"><span class="grabbable">&#8693;</span><span class="space"><input type="checkbox" onclick="selectAll(this)" /></span><span class="plename">Name</span><span class="pleurl">URL</span><span class="pleovol">Ovol</span></div>
           <ol id="pleditorcontent">
             <li class="pleitem">
               <span>1.</span>
@@ -90,7 +90,7 @@
             </li>
           </ol><!--pleditorcontent-->
           <div class="formbuttons">
-            <label for="file-upload" class="button" data-name="plimport">Import</label><input id="file-upload" type="file" accept=".txt, .csv" onchange="doPlUpload(this)" hidden/>
+            <label for="file-upload" class="button" data-name="plimport">Import</label><input id="file-upload" type="file" accept=".txt, .csv, .json" onchange="doPlUpload(this)" hidden/>
             <div class="button" data-name="plexport">Export</div>
             <div class="button" data-name="pladd">Add</div>
             <div class="button" data-name="pldel">Remove</div>

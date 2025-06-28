@@ -73,7 +73,7 @@ extern __attribute__((weak)) void audio_beginSDread();
 extern __attribute__((weak)) void audio_progress(uint32_t startpos, uint32_t endpos);
 extern __attribute__((weak)) void audio_error(const char*);
 
-#define AUDIO_INFO(...) { sprintf(m_ibuff, m_ibuffSize, __VA_ARGS__); if(audio_info) audio_info(m_ibuff); }
+//#define AUDIO_INFO(...) { sprintf(m_ibuff, m_ibuffSize, __VA_ARGS__); if(audio_info) audio_info(m_ibuff); }
 //#define AUDIO_ERROR(...) { sprintf(m_ibuff, m_ibuffSize, __VA_ARGS__); if(audio_error) audio_error(m_ibuff); }
 
 #define AUDIO_INFO(...) { sprintf(m_ibuff, __VA_ARGS__); if(audio_info) audio_info(m_ibuff); }

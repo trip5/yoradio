@@ -5,6 +5,8 @@
 #include "player.h"
 #include "network.h"
 #include "telnet.h"
+#include "display.h"
+#include "netserver.h" // For launchPlaybackTask
 
 Telnet telnet;
 
@@ -289,11 +291,19 @@ void Telnet::on_input(const char* str, uint8_t clientId) {
       printf(clientId, "> ");
       return;
     }
-    int sb;
-    if (sscanf(str, "play(%d)", &sb) == 1 || sscanf(str, "cli.play(\"%d\")", &sb) == 1 || sscanf(str, "play %d", &sb) == 1 ) {
-      if (sb < 1) sb = 1;
-      if (sb >= config.store.countStation) sb = config.store.countStation;
-      player.sendCommand({PR_PLAY, (uint16_t)sb});
+    char playarg[512];
+    if (sscanf(str, "play(%511[^)])", playarg) == 1 || sscanf(str, "cli.play(\"%511[^\"]\")", playarg) == 1 || sscanf(str, "play %511s", playarg) == 1) {
+      // Check if playarg is a number or a URL
+      if (strncmp(playarg, "http", 4) == 0) {
+        config.loadStation(0);
+        launchPlaybackTask(String(playarg), String(playarg)); // from netserver.cpp
+        printf(clientId, "Playing URL: %s\n> ", playarg);
+      } else {
+        int sb = atoi(playarg);
+        if (sb < 1) sb = 1;
+        if (sb >= config.store.countStation) sb = config.store.countStation;
+        player.sendCommand({PR_PLAY, (uint16_t)sb});
+      }
       return;
     }
     #ifdef USE_SD

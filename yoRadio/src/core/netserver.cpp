@@ -1,6 +1,7 @@
 #include "netserver.h"
 #include <SPIFFS.h>
-
+#include <ArduinoJson.h>
+#include "ESPFileUpdater/ESPFileUpdater.h"
 #include "config.h"
 #include "player.h"
 #include "telnet.h"
@@ -21,6 +22,13 @@
   #define NSQ_SEND_DELAY       (TickType_t)100  //portMAX_DELAY?
 #endif
 
+// Global list for radio-browser servers to persist across searches
+String g_ipv4_servers[20];
+
+// For the search task
+TaskHandle_t g_searchTaskHandle = NULL;
+#define FS_REQUIRED_FREE_SPACE 150 // in KB - must be minimum x3 of the limit_per_page in search.js
+
 //#define CORS_DEBUG
 
 NetServer netserver;
@@ -35,6 +43,8 @@ void handleUploadWeb(AsyncWebServerRequest *request, String filename, size_t ind
 void handleUpdate(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
 void handleHTTPArgs(AsyncWebServerRequest * request);
 void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
+void vTaskSearchRadioBrowser(void *pvParameters);
+void handleSearchPost(AsyncWebServerRequest *request);
 
 bool  shouldReboot  = false;
 #ifdef MQTT_ROOT_TOPIC
@@ -52,6 +62,95 @@ char* updateError() {
   static char ret[140] = {0};
   sprintf(ret, "Update failed with error (%d)<br /> %s", (int)Update.getError(), Update.errorString());
   return ret;
+}
+
+void handleSearch(AsyncWebServerRequest *request) {
+  // handle search request
+  if (request->hasParam("search")) {
+    if (g_searchTaskHandle != NULL) {
+      request->send(429, "text/plain", "Search task is already running.");
+      return;
+    }
+    String searchQuery = request->getParam("search")->value();
+    char* search_str = new (std::nothrow) char[searchQuery.length() + 1];
+    if (!search_str) {
+      request->send(500, "text/plain", "Failed to allocate memory for search task.");
+      return;
+    }
+    strcpy(search_str, searchQuery.c_str());
+    // Create a task to run the search
+    xTaskCreatePinnedToCore(vTaskSearchRadioBrowser, "searchRadioBrowser", 8192, (void*)search_str, 0, &g_searchTaskHandle, 0);
+    request->send(200, "application/json", "{\"status\":\"searching\"}");
+  } else {
+    // If no search parameter, assume user wants the search page
+    request->send(SPIFFS, "/www/search.html", "text/html", false, processor);
+  }
+}
+
+void handleSearchPost(AsyncWebServerRequest *request) {
+  // handle preview or add to playlist
+  bool addtoplaylist = false;
+  if (request->hasParam("addtoplaylist", true)) {
+    if (request->getParam("addtoplaylist", true)->value() == "true") addtoplaylist = true;
+  }
+  if (!request->hasParam("url", true) || !request->hasParam("name", true)) {
+    request->send(400, "text/plain", "Missing url or name");
+    return;
+  }
+  String sUrl = request->getParam("url", true)->value();
+  String sName = request->getParam("name", true)->value();
+  sName.trim();
+  sUrl.trim();
+  if (sName.length() >= sizeof(config.station.name)) sName = sName.substring(0, sizeof(config.station.name) - 1);
+  if (sUrl.length() >= sizeof(config.station.url)) sUrl = sUrl.substring(0, sizeof(config.station.url) - 1);
+  if (!addtoplaylist) { // This is a preview
+    config.loadStation(0); // Load into temporary station slot
+    launchPlaybackTask(sUrl, sName);
+    netserver.requestOnChange(GETINDEX, 0);
+    request->send(200, "text/plain", "PREVIEW");
+  } else { // This is add to playlist
+    int sOvol = 0;
+    // Check for duplicate URL before adding
+    bool found = false;
+    int foundIdx = 0;
+    auto normalizeUrl = [](const String& url) -> String {
+        String u = url;
+        u.trim();
+        if (u.startsWith("http://")) u = u.substring(7);
+        else if (u.startsWith("https://")) u = u.substring(8);
+        u.trim();
+        return u;
+        };
+    String normNewUrl = normalizeUrl(sUrl);
+    for (int i = 1; i <= config.store.countStation; ++i) {
+      config.loadStation(i);
+      String existingUrl = String(config.station.url);
+      String normExistingUrl = normalizeUrl(existingUrl);
+      if (normExistingUrl.equalsIgnoreCase(normNewUrl)) {
+        found = true;
+        foundIdx = i;
+        break;
+      }
+    }
+    if (found) { // play the slot if it already exists
+      player.sendCommand({PR_PLAY, (uint16_t)foundIdx});
+      request->send(200, "text/plain", "DUPLICATE");
+    } else { // add it and play it
+      File playlistfile = SPIFFS.open(PLAYLIST_PATH, "a");
+      if (playlistfile) {
+        playlistfile.printf("%s\t%s\t%d\r\n", sName.c_str(), sUrl.c_str(), sOvol);
+        playlistfile.close();
+        uint16_t newIdx = config.store.countStation + 1;
+        config.indexPlaylist();
+        config.initPlaylist();
+        player.sendCommand({PR_PLAY, newIdx});
+        netserver.requestOnChange(PLAYLISTSAVED, 0);
+        request->send(200, "text/plain", "ADDED");
+      } else {
+        request->send(500, "text/plain", "Failed to open playlist file");
+      }
+    }
+  }
 }
 
 bool NetServer::begin(bool quiet) {
@@ -92,6 +191,8 @@ bool NetServer::begin(bool quiet) {
   webserver.on("/update", HTTP_POST, beginUpdate, handleUpdate);
   webserver.on("/settings", HTTP_GET, handleHTTPArgs);
   if (IR_PIN != 255) webserver.on("/ir", HTTP_GET, handleHTTPArgs);
+  webserver.on("/search", HTTP_GET, handleSearch);
+  webserver.on("/search", HTTP_POST, handleSearchPost);
   webserver.serveStatic("/", SPIFFS, "/www/").setCacheControl("max-age=31536000");
 #ifdef CORS_DEBUG
   DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Origin"), F("*"));
@@ -355,6 +456,8 @@ void NetServer::processQueue(){
       case BALANCE:       sprintf (wsbuf, "{\"balance\": %d}", config.store.balance); break;
       case SDINIT:        sprintf (wsbuf, "{\"sdinit\": %d}", SDC_CS!=255); break;
       case GETPLAYERMODE: sprintf (wsbuf, "{\"playermode\": \"%s\"}", config.getMode()==PM_SDCARD?"modesd":"modeweb"); break;
+      case SEARCH_DONE:   sprintf (wsbuf, "{\"search_done\":true}"); break;
+      case SEARCH_FAILED: sprintf (wsbuf, "{\"search_failed\":true}"); break;
       #ifdef USE_SD
         case CHANGEMODE:    config.changeMode(newConfigMode); return; break;
       #endif
@@ -415,6 +518,7 @@ void NetServer::onWsMessage(void *arg, uint8_t *data, size_t len, uint8_t client
       if (strcmp(cmd, "getcontrols") == 0 ) { requestOnChange(GETCONTROLS, clientId); return; }
       if (strcmp(cmd, "getweather") == 0  ) { requestOnChange(GETWEATHER, clientId);  return; }
       if (strcmp(cmd, "getactive") == 0   ) { requestOnChange(GETACTIVE, clientId);   return; }
+      if (strcmp(cmd, "search_done") == 0 ) { websocket.textAll("{\"search_done\":true}"); return; }
       if (strcmp(cmd, "newmode") == 0     ) { newConfigMode = atoi(val); requestOnChange(CHANGEMODE, 0); return; }
       if (strcmp(cmd, "smartstart") == 0) {
         uint8_t valb = atoi(val);
@@ -792,35 +896,97 @@ bool NetServer::importPlaylist() {
   if (!tempfile) {
     return false;
   }
-  char sName[BUFLEN], sUrl[BUFLEN], linePl[BUFLEN*3];;
+  char sName[BUFLEN], sUrl[BUFLEN], linePl[BUFLEN*3];
   int sOvol;
-  _readPlaylistLine(tempfile, linePl, sizeof(linePl)-1);
-  if (config.parseCSV(linePl, sName, sUrl, sOvol)) {
-    tempfile.close();
-    SPIFFS.rename(TMP_PATH, PLAYLIST_PATH);
-    requestOnChange(PLAYLISTSAVED, 0);
-    return true;
+  // Read first non-empty line
+  String firstLine;
+  size_t firstPos = tempfile.position();
+  while (tempfile.available()) {
+    _readPlaylistLine(tempfile, linePl, sizeof(linePl)-1);
+    firstLine = String(linePl); firstLine.trim();
+    if (firstLine.length() > 0) break;
+    firstPos = tempfile.position();
   }
-  if (config.parseJSON(linePl, sName, sUrl, sOvol)) {
-    File playlistfile = SPIFFS.open(PLAYLIST_PATH, "w");
-    snprintf(linePl, sizeof(linePl)-1, "%s\t%s\t%d", sName, sUrl, 0);
-    playlistfile.println(linePl);
+  tempfile.seek(firstPos); // rewind to first non-empty line
+  // Detect minified JSON array (single line, starts with [)
+  bool isJsonArray = firstLine.startsWith("[");
+  bool foundAny = false;
+  File playlistfile = SPIFFS.open(TMP2_PATH, "w");
+  if (isJsonArray) {
+    // Read the whole file into a String
+    String jsonStr;
+    tempfile.seek(0);
     while (tempfile.available()) {
       _readPlaylistLine(tempfile, linePl, sizeof(linePl)-1);
-      if (config.parseJSON(linePl, sName, sUrl, sOvol)) {
-        snprintf(linePl, sizeof(linePl)-1, "%s\t%s\t%d", sName, sUrl, 0);
-        playlistfile.println(linePl);
+      jsonStr += String(linePl);
+    }
+    jsonStr.trim();
+    // Remove leading/trailing brackets if present
+    if (jsonStr.startsWith("[")) jsonStr = jsonStr.substring(1);
+    if (jsonStr.endsWith("]")) jsonStr = jsonStr.substring(0, jsonStr.length()-1);
+    // Robustly extract each {...} object using brace counting
+    int len = jsonStr.length();
+    int i = 0;
+    while (i < len) {
+      // Skip whitespace and commas
+      while (i < len && (jsonStr[i] == ' ' || jsonStr[i] == '\n' || jsonStr[i] == '\r' || jsonStr[i] == ',')) i++;
+      if (i >= len) break;
+      if (jsonStr[i] != '{') { i++; continue; }
+      int start = i;
+      int brace = 1;
+      i++;
+      while (i < len && brace > 0) {
+        if (jsonStr[i] == '{') brace++;
+        else if (jsonStr[i] == '}') brace--;
+        i++;
+      }
+      if (brace == 0) {
+        String objStr = jsonStr.substring(start, i);
+        objStr.trim();
+        if (objStr.length() == 0) continue;
+        strncpy(linePl, objStr.c_str(), sizeof(linePl)-1);
+        if (config.parseJSONnew(linePl, sName, sUrl, sOvol)) {
+          snprintf(linePl, sizeof(linePl)-1, "%s\t%s\t%d", sName, sUrl, sOvol);
+          playlistfile.print(String(linePl) + "\r\n");
+          foundAny = true;
+        }
       }
     }
-    playlistfile.flush();
-    playlistfile.close();
-    tempfile.close();
-    SPIFFS.remove(TMP_PATH);
+  } else {
+    // Not a minified array: process line by line
+    tempfile.seek(0);
+    while (tempfile.available()) {
+      _readPlaylistLine(tempfile, linePl, sizeof(linePl)-1);
+      String trimmed = String(linePl); trimmed.trim();
+      if (trimmed.length() == 0 || trimmed == "[" || trimmed == "]" || trimmed == ",") continue;
+      // Only treat as JSON if line starts with '{' and ends with '}'
+      if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        if (config.parseJSONnew(linePl, sName, sUrl, sOvol)) {
+          snprintf(linePl, sizeof(linePl)-1, "%s\t%s\t%d", sName, sUrl, sOvol);
+          playlistfile.print(String(linePl) + "\r\n");
+          foundAny = true;
+        }
+      } else {
+        // Only treat as CSV if not JSON
+        if (config.parseCSVnew(linePl, sName, sUrl, sOvol)) {
+          snprintf(linePl, sizeof(linePl)-1, "%s\t%s\t%d", sName, sUrl, sOvol);
+          playlistfile.print(String(linePl) + "\r\n");
+          foundAny = true;
+        }
+      }
+    }
+  }
+  playlistfile.flush();
+  playlistfile.close();
+  tempfile.close();
+  if (foundAny) {
+    SPIFFS.remove(PLAYLIST_PATH);
+    SPIFFS.rename(TMP2_PATH, PLAYLIST_PATH);
     requestOnChange(PLAYLISTSAVED, 0);
     return true;
   }
-  tempfile.close();
   SPIFFS.remove(TMP_PATH);
+  SPIFFS.remove(TMP2_PATH);
   return false;
 }
 
@@ -889,6 +1055,228 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
     case WS_EVT_PONG:
     case WS_EVT_ERROR:
       break;
+  }
+}
+
+// Helper to select and randomize radio-browser servers
+void selectRadioBrowserServer() { // No longer takes params, works on global g_ipv4_servers
+  size_t arr_size = sizeof(g_ipv4_servers) / sizeof(g_ipv4_servers[0]);
+  for (size_t i = 0; i < arr_size; ++i) g_ipv4_servers[i] = "";
+  File serversFile = SPIFFS.open("/www/rb_srvrs.json", "r");
+  if (!serversFile) {
+    Serial.println("[Search] [Error] Failed to open /www/rb_srvrs.json - will try to get IP of all.api.radio-browser.info instead.");
+    goto useIP;
+  } else {
+    DynamicJsonDocument doc(2048);
+    DeserializationError error = deserializeJson(doc, serversFile);
+    serversFile.close();
+    if (error) {
+      Serial.print(F("[Search] [Error] deserializeJson() failed: "));
+      Serial.println(error.c_str());
+      goto useIP; // get out of the else
+    }
+    JsonArray servers = doc.as<JsonArray>();
+    if (servers.isNull() || servers.size() == 0) {
+      Serial.println("[Search] [Error] JSON is not a valid or is an empty array.");
+      goto useIP; //get out of the else
+    }
+    // Collect unique IPv4 server names
+    size_t count = 0;
+    for (JsonObject server_obj : servers) {
+      const char* ip = server_obj["ip"];
+      if (ip && strchr(ip, '.')) { // It's an IPv4
+        bool duplicate = false;
+        for (size_t j = 0; j < count; ++j) {
+          if (g_ipv4_servers[j] == ip) {
+            duplicate = true;
+            break;
+          }
+        }
+        if (!duplicate && count < arr_size) {
+          g_ipv4_servers[count++] = ip;
+        }
+      }
+    }
+    // Shuffle
+    for (size_t i = count - 1; i > 0; --i) {
+      size_t j = random(i + 1);
+      String temp = g_ipv4_servers[i];
+      g_ipv4_servers[i] = g_ipv4_servers[j];
+      g_ipv4_servers[j] = temp;
+    }
+
+    IPAddress serverIP;
+    if (WiFi.hostByName("all.api.radio-browser.info", serverIP)) {
+      Serial.printf("Resolved IP: %s\n", serverIP.toString().c_str());
+      g_ipv4_servers[0] = serverIP.toString();
+    }
+  }
+  return;
+useIP:
+  IPAddress serverIP;
+  if (WiFi.hostByName("all.api.radio-browser.info", serverIP)) {
+    Serial.printf("Resolved IP: %s\n", serverIP.toString().c_str());
+    g_ipv4_servers[0] = serverIP.toString();
+  }
+}
+
+void vTaskSearchRadioBrowser(void *pvParameters) {
+  char* search_str = (char*)pvParameters;
+  Serial.printf("[Search] Starting radio browser search. Search: %s\n", search_str);
+  // Check SPIFFS free space
+  size_t freeSpace = SPIFFS.totalBytes() - SPIFFS.usedBytes();
+  if (freeSpace < (FS_REQUIRED_FREE_SPACE * 1024)) {
+    Serial.printf("[Search] [Error] Not enough free SPIFFS space: %u bytes. Aborting.\n", freeSpace);
+    netserver.requestOnChange(SEARCH_FAILED, 0);
+    delete[] search_str;
+    g_searchTaskHandle = NULL;
+    vTaskDelete(NULL);
+    return;
+  }
+  // Count non-empty servers from our global persistent list
+  size_t arr_size = sizeof(g_ipv4_servers) / sizeof(g_ipv4_servers[0]);
+  int server_count = 0;
+  for (size_t i = 0; i < arr_size; ++i) {
+    if (g_ipv4_servers[i].length() > 0) server_count++;
+  }
+  // If the list is empty, it's the first run or all servers failed previously. Let's (re)populate it.
+  if (server_count == 0) {
+    Serial.println("[Search] Server list is empty, repopulating from file.");
+    selectRadioBrowserServer();
+    // Recount after filling
+    server_count = 0;
+    for (size_t i = 0; i < arr_size; ++i) {
+      if (g_ipv4_servers[i].length() > 0) server_count++;
+    }
+  }
+  // If still no servers, then the API source is likely down or unreachable.
+  if (server_count == 0) {
+    Serial.println("[Search] [Error] No IPv4 servers available after attempting to select.");
+    netserver.requestOnChange(SEARCH_FAILED, 0);
+    delete[] search_str;
+    g_searchTaskHandle = NULL;
+    vTaskDelete(NULL);
+    return;
+  }
+  ESPFileUpdater searchResultsFetch(SPIFFS);
+  const char* localPath = "/www/searchresults.json";
+  bool success = false;
+  bool server_retried = false;
+  bool json_valid = false;
+  for (size_t i = 0; i < arr_size; ++i) {
+    if (g_ipv4_servers[i].length() == 0) continue;
+    String server = g_ipv4_servers[i];
+    // Compose the URL using the full search string
+    String url = "http://" + server + "/json/stations/search?" + String(search_str);
+    Serial.printf("[Search] Attempting to download from: %s\n", url.c_str());
+    auto status = searchResultsFetch.checkAndUpdate(localPath, url, ESPFILEUPDATER_VERBOSE);
+    if (status == ESPFileUpdater::UPDATED) {
+      Serial.printf("[Search] Successfully downloaded from %s\n", server.c_str());
+      // Check if the downloaded file ends with ']'
+      File jsonFile = SPIFFS.open(localPath, "r");
+      if (jsonFile) {
+        int fileSize = jsonFile.size();
+        char lastChar = 0;
+        if (fileSize > 0) {
+          for (int pos = fileSize - 1; pos >= 0; --pos) {
+            jsonFile.seek(pos, SeekSet);
+            char c = jsonFile.read();
+            if (!isspace((unsigned char)c)) {
+              lastChar = c;
+              break;
+            }
+          }
+        }
+        jsonFile.close();
+        if (lastChar != ']') {
+          if (server_retried == true) {
+            Serial.printf("[Search] [Warning] searchresults.json is incomplete. Not retrying.\n");
+            server_retried = false;
+          } else {
+            Serial.printf("[Search] [Warning] searchresults.json is incomplete. Retrying same server.\n");
+            server_retried = true;
+            --i;
+          }
+          continue;
+        } else {
+          json_valid = true;
+        }
+      } else {
+        if (server_retried == true) {
+          Serial.println("[Search] [Error] Could not open searchresults.json for validation. Not retrying.\n");
+          server_retried = false;
+        } else {
+          Serial.println("[Search] [Error] Could not open searchresults.json for validation. Retrying same server.\n");
+          server_retried = true;
+          --i;
+        }
+        continue;
+      }
+      if (json_valid) {
+        // Write /www/search.txt with the actual search string (single line)
+        File file = SPIFFS.open("/www/search.txt", "w");
+        if (file) {
+          file.printf("%s\n", search_str);
+          file.close();
+        } else {
+          Serial.println("[Search] [Error] Failed to open search.txt for writing.");
+        }
+        success = true;
+        break;
+      } else {
+        Serial.printf("[Search] [Error] Invalid JSON from %s. Removing from list.\n", server.c_str());
+        g_ipv4_servers[i] = "";
+        server_retried = false;
+      }
+    } else {
+      Serial.printf("[Search] [Error] Failed to download from %s. Removing from persistent list.\n", server.c_str());
+      g_ipv4_servers[i] = "";
+      server_retried = false;
+    }
+  }
+  if (success) {
+    netserver.requestOnChange(SEARCH_DONE, 0);
+  } else {
+    Serial.println("[Search] [Error] Failed to download from all available servers.");
+    netserver.requestOnChange(SEARCH_FAILED, 0);
+  }
+  delete[] search_str;
+  search_str = nullptr;
+  g_searchTaskHandle = NULL;
+  vTaskDelete(NULL);
+}
+
+void launchPlaybackTask(const String& url, const String& name) {
+  if (name.length() > 0 && name.length() < sizeof(config.station.name)) {
+    strlcpy(config.station.name, name.c_str(), sizeof(config.station.name));
+  } else {
+    strlcpy(config.station.name, "Playing", sizeof(config.station.name));
+  }
+  player.sendCommand({PR_STOP, 0}); // Stop any current playback first
+  display.putRequest(NEWSTATION, 0);
+  Serial.println("[netserver] Creating a dedicated task for playback.");
+  // Use a lambda to capture the URL and pass it to the task
+  String* url_copy = new String(url);
+  if (url_copy) {
+    // Use a larger stack for HTTPS, as it requires more memory for SSL/TLS.
+    UBaseType_t stackSize = url.startsWith("https://") ? 8192 : 4096;
+    xTaskCreate(
+        [](void* pvParameters) {
+          String* urlToPlay = (String*)pvParameters;
+          vTaskDelay(pdMS_TO_TICKS(100)); // A small delay can help the network stack release resources
+          Serial.printf("[PlaybackTask] Starting playback for URL: %s. Free heap: %u\n", urlToPlay->c_str(), ESP.getFreeHeap());
+          player.playUrl(urlToPlay->c_str());
+          delete urlToPlay; // Free the string
+          vTaskDelete(NULL);
+        },
+        "playbackTask",
+        stackSize,
+        (void*)url_copy,
+        1,
+        NULL
+    );
+  } else {
+    Serial.println("[netserver] ERROR: Failed to allocate memory for playback task URL.");
   }
 }
 
@@ -969,8 +1357,8 @@ void handleHTTPArgs(AsyncWebServerRequest * request) {
       int id = atoi(p->value().c_str());
       if (id < 1) id = 1;
       if (id > config.store.countStation) id = config.store.countStation;
-      //config.sdResumePos = 0;
-      player.sendCommand({PR_PLAY, id});
+      config.loadStation(id);
+      launchPlaybackTask(config.station.url, config.station.name);
       commandFound=true;
       DBGVB("[%s] play=%d", __func__, id);
     }
@@ -1023,14 +1411,17 @@ void handleHTTPArgs(AsyncWebServerRequest * request) {
       }
       return;
     }
-    if (request->params() > 0) {
-      request->send(commandFound?200:404);
-      return;
+
+    if (request->hasArg("savewifi")) {
+      AsyncWebParameter* p = request->getParam("savewifi", request->method() == HTTP_POST);
+      config.saveWifiFromNextion(p->value().c_str());
+      commandFound=true;
     }
-  } else {
-    if (request->params() > 0) {
-      request->send(404);
+    if(commandFound){
+      request->redirect("/");
+      request->send(200);
       return;
     }
   }
+  request->send(404);
 }

@@ -113,7 +113,11 @@ void DspCore::drawLogo(uint16_t top) {
   setTextSize(1);
   setCursor((width() - 6*CHARWIDTH) / 2, 0);
   setTextColor(TFT_FG, TFT_BG);
-  print(utf8Rus("ёRadio", false));
+  #ifdef YO_FIX
+    print(utf8Rus("yoRadio", false));
+  #else
+    print(utf8Rus("ёRadio", false));
+  #endif
   setTextSize(1);
 #endif
   display();

@@ -187,7 +187,7 @@ void Display::_apScreen() {
       #endif
     #endif
     ScrollWidget *bootTitle = (ScrollWidget*) &_boot->addWidget(new ScrollWidget("*", apTitleConf, config.theme.meta, config.theme.metabg));
-    #if (DSP_MODEL==DSP_SH1106)
+    #ifdef YO_FIX
       bootTitle->setText("yoRadio AP Mode");
     #else
       bootTitle->setText("ёRadio AP Mode");

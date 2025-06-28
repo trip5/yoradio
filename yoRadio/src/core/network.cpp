@@ -6,7 +6,6 @@
 #include "netserver.h"
 #include "player.h"
 #include "mqtt.h"
-#include "../ESPFileUpdater/ESPFileUpdater.h"
 
 #ifndef WIFI_ATTEMPTS
   #define WIFI_ATTEMPTS  16
@@ -19,9 +18,6 @@ TaskHandle_t syncTaskHandle;
 
 bool getWeather(char *wstr);
 void doSync(void * pvParameters);
-
-bool wasUpdated(ESPFileUpdater::UpdateStatus status) { return status == ESPFileUpdater::UPDATED; }
-ESPFileUpdater updater(SPIFFS);
 
 void ticks() {
   if(!display.ready()) return; //waiting for SD is ready
@@ -298,25 +294,6 @@ void MyNetwork::requestWeatherSync(){
   display.putRequest(NEWWEATHER);
 }
 
-void updateTZjson(void* param) {
-  Serial.println("[ESPFileUpdater: Timezones.json] Called by TimeSync");
-  ESPFileUpdater* updater = (ESPFileUpdater*)param;
-  ESPFileUpdater::UpdateStatus result = updater->checkAndUpdate(
-      "/www/timezones.json.gz",
-      TIMEZONES_JSON_GZ_URL,
-      "1 week", // update once a week at most
-      false // verbose logging
-  );
-  if (result == ESPFileUpdater::UPDATED) {
-    Serial.println("[ESPFileUpdater: Timezones.json] Update completed.");
-  } else if (result == ESPFileUpdater::NOT_MODIFIED) {
-    Serial.println("[ESPFileUpdater: Timezones.json] No update needed.");
-  } else {
-    Serial.println("[ESPFileUpdater: Timezones.json] Update failed.");
-  }
-  vTaskDelete(NULL);
-}
-
 void doSync( void * pvParameters ) {
   static uint8_t tsFailCnt = 0;
   //static uint8_t wsFailCnt = 0;
@@ -331,7 +308,6 @@ void doSync( void * pvParameters ) {
       #if RTCSUPPORTED
         if (config.isRTCFound()) rtc.setTime(&network.timeinfo);
       #endif
-        xTaskCreate(updateTZjson, "updateTZjson", 8192, &updater, 1, NULL);
     }else{
       if(tsFailCnt<4){
         network.forceTimeSync = true;

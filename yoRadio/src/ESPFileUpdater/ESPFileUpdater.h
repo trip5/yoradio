@@ -4,9 +4,22 @@
 #include <HTTPClient.h>
 #include <FS.h>
 #include <mbedtls/sha256.h>
+#include <WiFiClient.h>
 
 #ifndef ESPFILEUPDATER_MAXSIZE
 #define ESPFILEUPDATER_MAXSIZE 102400  // 100 KB max stream size for hashing
+#endif
+
+#ifndef ESPFILEUPDATER_TIMEOUT
+#define ESPFILEUPDATER_TIMEOUT 15000   // 15000ms / 15s for timeout (for each check)
+#endif
+
+#ifndef ESPFILEUPDATER_CHECKNET
+#define ESPFILEUPDATER_CHECKNET WiFi.status() == WL_CONNECTED  // Check the network
+#endif
+
+#ifndef ESPFILEUPDATER_USERAGENT
+#define ESPFILEUPDATER_USERAGENT "ESPFileUpdater/1.0.0 (https://github.com/trip5/ESPFileUpdater)"
 #endif
 
 /// @brief Class for updating files on ESP devices from a remote HTTP source.
@@ -19,8 +32,9 @@ public:
     NOT_MODIFIED,         ///< File is already up-to-date.
     SERVER_ERROR,         ///< Server error or unreachable.
     FILE_NOT_FOUND,       ///< Remote file not found (404).
-    SPIFFS_ERROR,         ///< Filesystem error.
-    TIME_ERROR            ///< System time not set.
+    FS_ERROR,             ///< Filesystem error.
+    TIME_ERROR,           ///< System time not set.
+    NETWORK_ERROR         ///< Network connection not ready.
   };
 
   /// @brief Construct a new ESPFileUpdater object.
@@ -30,7 +44,7 @@ public:
   /// @brief Check and update a file from a remote URL, with optional max-age and verbose logging.
   /// @param localPath Path to the local file.
   /// @param remoteURL URL of the remote file.
-  /// @param maxAge Optional: max age string (e.g., "12h", "12 hours "7 d", "43days", "1m", "1 month")
+  /// @param maxAge Optional: max age string (e.g., "12h", "5 days", "2weeks", "1 month" - may be specified as abbreviations: h, hr, d, wk, w, mo, m)
   /// @param verbose Optional: enable verbose logging.
   /// @return UpdateStatus indicating the result.
   UpdateStatus checkAndUpdate(const String& localPath, const String& remoteURL, const String& maxAge = "", bool verbose = false);
@@ -42,14 +56,18 @@ public:
   /// @return UpdateStatus indicating the result.
   UpdateStatus checkAndUpdate(const String& localPath, const String& remoteURL, bool verbose);
 
-  /// @brief Check and update a file from a remote URL.
-  /// @param localPath Path to the local file.
-  /// @param remoteURL URL of the remote file.
-  /// @return UpdateStatus indicating the result.
-  UpdateStatus checkAndUpdate(const String& localPath, const String& remoteURL);
-
 private:
   fs::FS& _fs;
+
+  /// @brief Wait until the filesystem is ready (SPIFFS mounted).
+  /// @return true if ready, false if timeout.
+  bool waitForSystemReadyFS();
+  /// @brief Wait until the system time is set.
+  /// @return true if ready, false if timeout.
+  bool waitForSystemReadyTime();
+  /// @brief Wait until Network is connected (WL_CONNECTED).
+  /// @return true if ready, false if timeout.
+  bool waitForSystemReadyNetwork();
 
   /// @brief Get the path to the .meta file for a given file.
   /// @param filePath Path to the local file.

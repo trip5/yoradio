@@ -46,11 +46,12 @@ void setup() {
     mqttInit();
   #endif
   #if LED_INVERT
-    if(REAL_LEDBUILTIN!=255) digitalWrite(REAL_LEDBUILTIN, true);Add commentMore actions
+    if(REAL_LEDBUILTIN!=255) digitalWrite(REAL_LEDBUILTIN, true);
   #endif
   if (config.getMode()==PM_SDCARD) player.initHeaders(config.station.url);
   player.lockOutput=false;
   if (config.store.smartstart == 1) player.sendCommand({PR_PLAY, config.lastStation()});
+  config.startAsyncServicesButWait();
   pm.on_end_setup();
 }
 

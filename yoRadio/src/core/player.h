@@ -69,6 +69,7 @@ class Player: public Audio {
     void stopInfo();
     void setOutputPins(bool isPlaying);
     void setResumeFilePos(int32_t pos) { _resumeFilePos = pos; }
+    void playUrl(const char* url);
 };
 
 extern Player player;

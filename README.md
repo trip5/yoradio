@@ -234,6 +234,139 @@ Work is in progress...
 
 ---
 ## Version history
+
+### 0.9.434(m)/Trip5/2025.06.29
+
+- BREAKING CHANGES
+  - might need to do full Erase Flash and Upload program and Filesystem again
+  - Filesystem Image MUST be flashed again
+  - many settings will be reset to defaults
+  - notes were added to config.cpp how to handle breaking and non-breaking store updates in the future
+  - future re-flashes should not lose settings after this update
+- EEProm storage removed in favor of Preferences
+  - config.store variables may still be used as before
+  - no need to handle store version changes except by adding old ones to the "remove" list in config.cpp
+    - char handling improved throughout (size may be changed later with 1 edit to config.h)
+      - affects timezone, mdnsname, weather coordinate variables
+- shorter Wi-fi message
+- LED_INVERT fixed
+- fixes for screens that can't display certain characters (add to myoptions.h)
+  - #define YO_FIX // changes ёRadio to yoRadio for screens that can't print ё
+  - #define PRINT_FIX // fix Chinese certain screens so they don't display gibberish
+    - hijacks utf8RusGFX.h (which is meant for Russian model displays that can handle certain Russian characters)
+    - will transliterate as many European characters as possible by dropping accents
+    - will transliterate Cyrillic.. probably badly
+    - will transliterate various punctuation and currency symbols
+    - any characters that can't be handled will be replaced by a space
+- ESPFileUpdater can update and download files (used in multiple places)
+  - a new library created for this project
+  - this may be used to load / update any file to SPIFFS from the web
+  - really, I hope this library can fulfill more automated functions
+  - in theory, you could start with a completely empty SPIFFS!
+  - add #define ESPFILEUPDATER_DEBUG to myoptions.h to get verbose output
+- implements proper timezones
+  - uses ESPFileUpdater to download an up-to-date json to be used as a selector in the WebUI
+  - fetches from https://raw.githubusercontent.com/trip5/timezones.json/refs/heads/master/timezones.gz.json
+    - this can be a gzipped or regular json
+    - uses github workflow to automatically update whenever tzdb has changed
+    - also created for this project
+    - another json.gz can be used by a define in options.h
+      - TIMEZONES_JSON_URL "https://raw.githubusercontent.com/trip5/timezones.json/master/timezones.json.gz"
+  - will handle Daylight Savings Times
+    - does not affect timed functions that use ticks (screensaver, weather)
+    - may have side-effects on other timed functions that don't use ticks
+  - timezone offset completely removed
+  - timezones may be changed through WebUI or telnet
+  - telnet has some extra functions added
+    - TZO ±X now just changes to a GMT-type (non-standard is OK)
+    - TZO ±X:XX now just changes to a custom timezone (based on GMT-type)
+    - TZPOSIX command can create a custom timezone (be careful)
+    - PLAY url can play a station not on the playlist
+  - Nextion displays only show timezone now, cannot change timezone
+    - there may be a good way to implement with + & - with GMT timezones (see telnet.cpp for some idea)
+    - I have no Nextion display to test (sorry!)
+      - sidenote: adding stations via Nextion has been made resilient with new-line endings but unsure if this was needed
+- regional defaults now be defined in my myoptions.h (defaults in quotes):
+  - #define TIMEZONE_NAME "Europe/Moscow"
+  - #define TIMEZONE_POSIX "MSK-3"
+  - #define SNTP1 "pool.ntp.org"
+  - #define SNTP2 "0.ru.pool.ntp.org"
+  - #define WEATHERLAT "55.7512"
+  - #define WEATHERLON "37.6184"
+  - all can still be edited using WebUI
+- Radio station search via Radio Browser API
+  - performs search queries to a https://www.radio-browser.info/ server
+  - uses ESPFileUpdater to download an up-to-date json of API servers
+    - another json can be used by a define in options.h
+      - #define RADIO_BROWSER_SERVERS_URL "http://37.27.202.89/json/servers"
+  - handles down API servers gracefully (and they do go down fairly often)
+  - uses ESPFileUpdater to download JSON search results directly from the API to the ESP's file system
+    - previous searches are saved and not lost on reboot (50 results, page number)
+    - saved searches will be deleted on reboot if they are older than 24 hours
+  - search results shows station name, country code, codec, bitrate
+  - stations can be previewed with a play button that does not it to the playlist
+    - if matches URL in the playlist will play the station from the playlist
+  - stations can be added with a plus button
+    - will not add a station which has the same URL as one already in the playlist (http & https considered same)
+- Playback queue (either from playlist, search, or telnet) put into an RTOS task that runs in the background
+  - stability improved but slight delay added
+- Improved JSON and CSV file importing
+  - CSV import made more resilient
+    - can import any type of list with fields separated by tabs or spaces
+    - missing name or ovol fields will continue to be imported
+    - for example, all of these are valid:
+      - space-separated values:
+        nap.casthost.net:8793/stream Intra Nature Radio
+        Ambient Sleeping Pill http://radio.stereoscenic.com/asp-s
+        Super Relax FM https://streams.radio.menu/listen/super-relax-fm/radio.mp3 0
+      - tab-separated values:
+        Traxx FM - Ambient	http://traxx011.ice.infomaniak.ch/traxx011-low.mp3	0
+        Positively Meditation	0	https://streaming.positivity.radio/pr/posimeditation/icecast.audio
+        0	Cryosleep	http://streams.echoesofbluemars.org/8000/cryosleep
+        https://ice4.somafm.com/darkzone-128-mp3	Soma FM - Dark Zone 0
+      - just the URL
+        https://ice4.somafm.com/dronezone-128-mp3
+  - JSON import made more resilient
+    - can handle line-by-line files that are not enclosed in [ ]
+      - ie. each line looks like `{"name":"Swinging radio 60s","host":"http://s2.xrad.io","file":"/8058/stream","port":"0","ovol":"0"}`
+    - can handle proper json files where all entries are enclosed in [ ]
+      - the field "url_resolved" will be preferred
+      - fallback to "url"
+      - finally, fallback to "host" and "file" and "port" - which will be combined into a url
+  - in both parsers, only the url is mandatory
+    - if "name" is absent, it will be assumed to be the url even without http(s)://
+    - if "ovol" is absent, is will be assumed to be 0
+- Added all of Maleksm's additions and changes from v0.9.434m (04.04.25)
+  - includes improved decoding for VS1053 and PCM decoder and various codecs
+  - ESP8266 support completely removed
+  - includes battery widget
+    - these are all hand-coded into the various display drivers
+    - may not display correctly on Chinese or other displays
+    - originally on by default, now off by default
+      - use #define BATTERY_WIDGET in myoptions.h to turn it on
+      - uses default ADC_PIN from your board definition
+        - #define ADC_PIN if not using default (use 1, 2, 36, or 39, default is 1 or 36 depending on board)
+      - use #define R1, #define R2, #define DELTA_BAT to specify resistors and delta
+        - #define R1 50 (resistor from battery positive to ADC_PIN, default 50 = 50k ohm)
+        - #define R2 100 (resistor from ADC_PIN to GND, default 100 = 100k ohm)
+        - #define DELTA_BAT (simple addition or subtraction to correct the calculation, default 0)
+  - screensavers both measured in seconds
+  - includes BacklightDown plugin
+    - dims the display after awhile
+      - #define BRIGHTNESS_PIN must be in your options
+      - #define DOWN_LEVEL 2 (brightness level 0 to 255, default 2 )
+      - #define DOWN_INTERVAL 60 (seconds to dim, default 60 = 60 seconds)
+  - various fixes to weather display
+  - AP when WiFi not found has no password
+  - Display type added: DSP_ST7789_170
+  - VS1053 can use ESP32-S3's SubSPI instead of FSPI
+    - #define VS_SSPI true in myoptions.h
+      - MISO pin 37, MOSI pin 35, CLK pin 36
+      - warning: don't use in ESP32-S3 modules with octal PSRAM
+  - notes and ZIP file regarding ESP32-WROOM
+  - notes and ZIP file regarding liblwip fix
+  - there may be other changes that I didn't recognize
+
 ### 0.9.434
 - fixed the issue with exiting Screensaver Blank Screen mode via button presses and IR commands.
 - reduced the minimum frequency for tone control on I2S modules to 80Hz.

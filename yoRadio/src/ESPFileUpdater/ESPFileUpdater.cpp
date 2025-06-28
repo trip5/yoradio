@@ -1,38 +1,40 @@
 // -- Created by Trip5 : https://github.com/trip5/ESPFileUpdater
 
-#include "espfileupdater.h"
+#include "ESPFileUpdater.h"
 #include <time.h>
+#include <WiFiClient.h>
+#include <Arduino.h>
+#include <lwip/sockets.h>
+#include <lwip/netdb.h>
 
 /// @brief Construct a new ESPFileUpdater object.
 /// @param fs Reference to the filesystem.
 ESPFileUpdater::ESPFileUpdater(fs::FS& fs) : _fs(fs) {}
 
-/// @copydoc ESPFileUpdater::checkAndUpdate(const String&, const String&, bool)
-ESPFileUpdater::UpdateStatus ESPFileUpdater::checkAndUpdate(const String& localPath, const String& remoteURL, bool verbose) {
-  return checkAndUpdate(localPath, remoteURL, "", verbose);
-}
-
-/// @copydoc ESPFileUpdater::checkAndUpdate(const String&, const String&)
-ESPFileUpdater::UpdateStatus ESPFileUpdater::checkAndUpdate(const String& localPath, const String& remoteURL) { 
-  return checkAndUpdate(localPath, remoteURL, "", false);
-}
-
 /// @copydoc ESPFileUpdater::checkAndUpdate(const String&, const String&, const String&, bool)
 ESPFileUpdater::UpdateStatus ESPFileUpdater::checkAndUpdate(const String& localPath, const String& remoteURL, const String& maxAge, bool verbose) {
   String meta = metaPath(localPath);
   bool ForceUpdate = false;
-  time_t now = time(nullptr);
   String newLastModified = "";
   String newHash = "";
+
+  if (waitForSystemReadyFS()==false) {
+    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] File system not ready. Aborting update.\n", localPath.c_str());
+    return FS_ERROR;
+  }
 
   if (!_fs.exists(localPath)) {
     if (verbose) Serial.printf("[ESPFileUpdater: %s] [Info] File doesn't exist. Forcing download.\n", localPath.c_str());
     ForceUpdate = true;
+  } else if (maxAge == "") {
+    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Info] Downloading.\n", localPath.c_str());
+    ForceUpdate = true;
   } else {
-    if (now < 100000) {
+    if (waitForSystemReadyTime()==false) {
       if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] System time not set. Aborting update.", localPath.c_str());
       return TIME_ERROR;
     }
+    time_t now = time(nullptr);
     // check .meta file if URL has changed
     if (_fs.exists(meta)) {
       String storedURL = readMetaURL(meta);
@@ -42,60 +44,79 @@ ESPFileUpdater::UpdateStatus ESPFileUpdater::checkAndUpdate(const String& localP
       }
     }
   }
+
   if (ForceUpdate == false) {
     // check .meta file and maxAge
+    time_t now = time(nullptr);
     if (maxAge.length() > 0 && _fs.exists(meta)) {
       time_t metaTime = parseMetaTime(meta);
       time_t interval = parseMaxAge(maxAge);
+
+      char nowStr[32];
+      strftime(nowStr, sizeof(nowStr), "%Y-%m-%d %H:%M:%S", localtime(&now));
+      if (verbose) Serial.printf("[ESPFileUpdater: %s] Current time: %s\n", localPath.c_str(), nowStr);
+      char metaTimeStr[32];
+      strftime(metaTimeStr, sizeof(metaTimeStr), "%Y-%m-%d %H:%M:%S", localtime(&metaTime));
+      if (verbose) Serial.printf("[ESPFileUpdater: %s] .meta file time: %s\n", localPath.c_str(), metaTimeStr);
+
       if (metaTime > 0 && interval > 0 && (now < metaTime + interval)) {
         if (verbose) Serial.printf("[ESPFileUpdater: %s] [Info] Skipping update: max age (%s) not reached.\n", localPath.c_str(), maxAge.c_str());
         return MAX_AGE_NOT_REACHED;
       }
-
-      char nowStr[32];
-      strftime(nowStr, sizeof(nowStr), "%Y-%m-%d %H:%M:%S", localtime(&now));
-      if (verbose) Serial.printf("[ESPFileUpdater: %s] Current time: %s (epoch: %ld)\n", localPath.c_str(), nowStr, now);
-      char metaTimeStr[32];
-      strftime(metaTimeStr, sizeof(metaTimeStr), "%Y-%m-%d %H:%M:%S", localtime(&metaTime));
-      if (verbose) Serial.printf("[ESPFileUpdater: %s] .meta file time: %s (epoch: %ld)\n", localPath.c_str(), metaTimeStr, metaTime);
     }
 
     if (verbose) Serial.printf("[ESPFileUpdater: %s] [Check] Connecting to %s\n", localPath.c_str(), remoteURL.c_str());
+    if (waitForSystemReadyNetwork()==false) {
+      if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] Network connection not ready. Aborting.\n", localPath.c_str());
+      return NETWORK_ERROR;
+    }
+
     HTTPClient http;
     http.begin(remoteURL);
+    http.setUserAgent(ESPFILEUPDATER_USERAGENT);
     int httpCode = http.sendRequest("HEAD");
 
     if (httpCode <= 0) {
-      if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] Server unreachable.", localPath.c_str());
+      if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] Server unreachable.\n", localPath.c_str());
       return SERVER_ERROR;
     }
 
+    String lastModified = "";
     if (verbose) Serial.printf("[ESPFileUpdater: %s] [Response] HTTP code: %d\n", localPath.c_str(), httpCode);
     if (httpCode == HTTP_CODE_NOT_FOUND) {
-      if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] File not found on server.", localPath.c_str());
-      return FILE_NOT_FOUND;
+      if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] File not found on server. Trying GET anyways.\n", localPath.c_str());
+    } else {
+      lastModified = http.header("Last-Modified");
+      if (verbose) Serial.printf("[ESPFileUpdater: %s] [Header] Last-Modified: %s\n", localPath.c_str(), lastModified.c_str());
     }
-
-    String lastModified = http.header("Last-Modified");
-    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Header] Last-Modified: %s\n", localPath.c_str(), lastModified.c_str());
 
     UpdateStatus status = isRemoteFileNewer(localPath, remoteURL, lastModified, newLastModified, newHash, verbose);
 
     if (status != UPDATED) {
       if (status == NOT_MODIFIED) 
         if (verbose) Serial.printf("[ESPFileUpdater: %s] [Complete] Remote file is same.\n", localPath.c_str());
+      if (status == FILE_NOT_FOUND) 
+        if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] File not found. Aborting.\n", localPath.c_str());
+      if (status == SERVER_ERROR) 
+        if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] Server error. Aborting.\n", localPath.c_str());
       return status;
     }
 
-    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Update] Remote file is newer. Downloading...\n", localPath.c_str());
-    http.end(); // Close previous HEAD connection
+    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Update] Downloading remote file...\n", localPath.c_str());
+    http.end();
+  }
+
+  if (waitForSystemReadyNetwork()==false) {
+    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] Network connection not ready. Aborting.\n", localPath.c_str());
+    return NETWORK_ERROR;
   }
 
   HTTPClient http;
   http.begin(remoteURL);
+  http.setUserAgent(ESPFILEUPDATER_USERAGENT);
   int getCode = http.GET();
   if (getCode != HTTP_CODE_OK) {
-    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] GET failed. HTTP code: %d\n", localPath.c_str(), getCode);
+    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] GET failed. HTTP code: %d. Aborting.\n", localPath.c_str(), getCode);
     http.end();
     return SERVER_ERROR;
   }
@@ -105,9 +126,9 @@ ESPFileUpdater::UpdateStatus ESPFileUpdater::checkAndUpdate(const String& localP
   String tmpPath = localPath + ".tmp";
   File file = _fs.open(tmpPath, FILE_WRITE);
   if (!file) {
-    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] Cannot open temp file for writing.\n", localPath.c_str());
+    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Error] Cannot open temp file for writing. Aborting.\n", localPath.c_str());
     http.end();
-    return SPIFFS_ERROR;
+    return FS_ERROR;
   }
 
   WiFiClient* stream = http.getStreamPtr();
@@ -115,6 +136,7 @@ ESPFileUpdater::UpdateStatus ESPFileUpdater::checkAndUpdate(const String& localP
   int len;
   while ((len = stream->readBytes(buf, sizeof(buf))) > 0) {
     file.write(buf, len);
+    yield();
   }
 
   file.close();
@@ -135,6 +157,11 @@ ESPFileUpdater::UpdateStatus ESPFileUpdater::checkAndUpdate(const String& localP
   return UPDATED;
 }
 
+/// @copydoc ESPFileUpdater::checkAndUpdate(const String&, const String&, const String&, bool)
+ESPFileUpdater::UpdateStatus ESPFileUpdater::checkAndUpdate(const String& localPath, const String& remoteURL, bool verbose) {
+  return checkAndUpdate(localPath, remoteURL, "", verbose);
+}
+
 /// @copydoc ESPFileUpdater::isRemoteFileNewer
 ESPFileUpdater::UpdateStatus ESPFileUpdater::isRemoteFileNewer(const String& localPath, const String& url,
                                                                const String& lastModified,
@@ -146,12 +173,17 @@ ESPFileUpdater::UpdateStatus ESPFileUpdater::isRemoteFileNewer(const String& loc
   String storedHash = readMetaHash(meta);
 
   if (lastModified.length() == 0) {
-    // Fallback: hash both files
-    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Fallback] No Last-Modified header. Comparing file hashes...\n", localPath.c_str());
+    // Fallback: hash both files or check GET status
+    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Fallback] No Last-Modified header or server ignored request. Trying GET for file hash...\n", localPath.c_str());
 
     HTTPClient http;
     http.begin(url);
+    http.setUserAgent(ESPFILEUPDATER_USERAGENT);
     int code = http.GET();
+    if (code == HTTP_CODE_NOT_FOUND) {
+      http.end();
+      return FILE_NOT_FOUND;
+    }
     if (code != HTTP_CODE_OK) {
       http.end();
       return SERVER_ERROR;
@@ -166,6 +198,7 @@ ESPFileUpdater::UpdateStatus ESPFileUpdater::isRemoteFileNewer(const String& loc
 
     if (verbose) Serial.printf("[ESPFileUpdater: %s] [Local SHA256] %s\n", localPath.c_str(), localHash.c_str());
     if (verbose) Serial.printf("[ESPFileUpdater: %s] [Remote SHA256] %s\n", localPath.c_str(), remoteHash.c_str());
+    if (verbose) Serial.printf("[ESPFileUpdater: %s] [Check] Hashes do not match. Assume remote file is newer.\n", localPath.c_str());
 
     if (localHash != remoteHash) {
       return UPDATED;
@@ -269,6 +302,7 @@ String ESPFileUpdater::calculateFileHash(File& file) {
     mbedtls_sha256_update_ret(&ctx, buffer, toHash);
     total += toHash;
     if (total >= ESPFILEUPDATER_MAXSIZE) break;
+    yield();
   }
 
   uint8_t hash[32];
@@ -299,6 +333,7 @@ String ESPFileUpdater::calculateStreamHash(WiFiClient& stream, size_t maxBytes) 
   while (total < maxBytes && stream.connected() && (len = stream.readBytes(buffer, sizeof(buffer))) > 0) {
     mbedtls_sha256_update_ret(&ctx, buffer, len);
     total += len;
+    yield();
   }
 
   uint8_t hash[32];
@@ -348,6 +383,8 @@ time_t ESPFileUpdater::parseMaxAge(const String& maxAgeStr) {
     return num * 3600;
   if (unit == "day" || unit == "d")
     return num * 86400;
+  if (unit == "week" || unit == "wk" || unit == "w")
+    return num * 604800; // 7 days
   if (unit == "month" || unit == "mo" || unit == "m")
     return num * 2592000; // 30 days
 
@@ -374,4 +411,51 @@ time_t ESPFileUpdater::parseMetaTime(const String& metaPath) {
     return mktime(&t);
   }
   return 0;
+}
+
+/// @brief Wait until the filesystem is ready (SPIFFS mounted).
+/// @return true if ready, false if timeout.
+bool ESPFileUpdater::waitForSystemReadyFS() {
+  const uint32_t timeoutMs = ESPFILEUPDATER_TIMEOUT;
+  uint32_t start = millis();
+  if (&_fs == nullptr) return false;
+  const char* tmpname = "/.fsreadycheck135792468.tmp";
+  while (millis() - start < timeoutMs) {
+    File f = _fs.open(tmpname, FILE_WRITE);
+    if (f) {
+      f.print("test");
+      f.close();
+      _fs.remove(tmpname);
+      return true;
+    }
+    delay(50);
+    yield();
+  }
+  return false;
+}
+
+bool ESPFileUpdater::waitForSystemReadyTime() {
+  const uint32_t timeoutMs = ESPFILEUPDATER_TIMEOUT;
+  uint32_t start = millis();
+  time_t now = time(nullptr);
+  while (now < 100000 && millis() - start < timeoutMs) {
+    delay(50);
+    now = time(nullptr);
+    yield();
+  }
+  if (now < 100000) return false;
+  return true;
+}
+
+bool ESPFileUpdater::waitForSystemReadyNetwork() {
+  const uint32_t timeoutMs = ESPFILEUPDATER_TIMEOUT;
+  uint32_t start = millis();
+  while (millis() - start < timeoutMs) {
+    if (ESPFILEUPDATER_CHECKNET) {
+      return true;
+    }
+    delay(100);
+    yield();
+  }
+  return false;
 }

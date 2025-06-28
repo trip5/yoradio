@@ -9,8 +9,11 @@
 #include "sdmanager.h"
 #endif
 #include <cstddef>
+#include "../ESPFileUpdater/ESPFileUpdater.h"
 
 Config config;
+
+bool wasUpdated(ESPFileUpdater::UpdateStatus status) { return status == ESPFileUpdater::UPDATED; }
 
 void u8fix(char *src){
   char last = src[strlen(src)-1]; 
@@ -19,9 +22,10 @@ void u8fix(char *src){
 
 bool Config::_isFSempty() {
   const char* reqiredFiles[] = {"dragpl.js.gz","elogo.png","elogo84.png","index.html",
-                                "ir.css.gz","ir.html","ir.js.gz","script.js.gz",
+                                "ir.css.gz","ir.html","ir.js.gz","script.js.gz", "rb_srvrs.json",
+                                "search.html","search.js.gz","search.css.gz","timezones.json.gz",
                                 "settings.css.gz","settings.html","style.css.gz","update.html"};
-  const uint8_t reqiredFilesSize = 12;
+  const uint8_t reqiredFilesSize = 17;
   char fullpath[28];
   for (uint8_t i=0; i<reqiredFilesSize; i++){
     sprintf(fullpath, "/www/%s", reqiredFiles[i]);
@@ -406,7 +410,11 @@ void Config::loadStation(uint16_t ls) {
   if (store.countStation == 0) {
     memset(station.url, 0, BUFLEN);
     memset(station.name, 0, BUFLEN);
-    strncpy(station.name, "ёRadio", BUFLEN);
+    #ifdef YO_FIX
+      strncpy(station.name, "yoRadio", BUFLEN);
+    #else
+      strncpy(station.name, "ёRadio", BUFLEN);
+    #endif
     station.ovol = 0;
     return;
   }
@@ -560,6 +568,317 @@ bool Config::parseJSON(const char* line, char* name, char* url, int &ovol) {
   return true;
 }
 
+bool Config::parseCSVnew(const char* line, char* name, char* url, int &ovol) {
+  // Reset outputs
+  if (name) name[0] = 0;
+  if (url) url[0] = 0;
+  ovol = 0;
+
+  // Copy line to a buffer for tokenization
+  char buf[BUFLEN * 2];
+  strncpy(buf, line, sizeof(buf) - 1);
+  buf[sizeof(buf) - 1] = 0;
+
+  // Detect delimiter: prefer tab, then space
+  char delim = 0;
+  if (strchr(buf, '\t')) delim = '\t';
+  else delim = ' ';
+
+  // Tokenize by detected delimiter only
+  char* tokens[32];
+  int t = 0;
+  char* p = strtok(buf, (delim == '\t') ? "\t" : " ");
+  while (p && t < 32) {
+    tokens[t++] = p;
+    p = strtok(nullptr, (delim == '\t') ? "\t" : " ");
+  }
+
+  // --- TAB-DELIMITED LOGIC ---
+  if (delim == '\t') {
+    if (t == 1) {
+      // 1 field: URL only
+      if (strstr(tokens[0], ".") && (strstr(tokens[0], "/") || strstr(tokens[0], "://"))) {
+        if (url) {
+          if (strncmp(tokens[0], "http://", 7) != 0 && strncmp(tokens[0], "https://", 8) != 0) {
+            snprintf(url, BUFLEN, "http://%s", tokens[0]);
+          } else {
+            strlcpy(url, tokens[0], BUFLEN);
+          }
+        }
+        if (name) {
+          const char* u = url;
+          if (strncmp(u, "http://", 7) == 0) u += 7;
+          else if (strncmp(u, "https://", 8) == 0) u += 8;
+          strlcpy(name, u, BUFLEN);
+          // Sanitize '/' to ' '
+          for (char* p = name; *p; ++p) if (*p == '/') *p = ' ';
+        }
+        ovol = 0;
+        return true;
+      } else {
+        return false;
+      }
+    } else if (t == 2) {
+      // 2 fields: one is URL, one is name (order does not matter)
+      int urlIdx = -1, nameIdx = -1;
+      for (int i = 0; i < 2; ++i) {
+        if (strstr(tokens[i], ".") && (strstr(tokens[i], "/") || strstr(tokens[i], "://"))) urlIdx = i;
+        else nameIdx = i;
+      }
+      if (urlIdx == -1 || nameIdx == -1) return false;
+      if (url) {
+        if (strncmp(tokens[urlIdx], "http://", 7) != 0 && strncmp(tokens[urlIdx], "https://", 8) != 0) {
+          snprintf(url, BUFLEN, "http://%s", tokens[urlIdx]);
+        } else {
+          strlcpy(url, tokens[urlIdx], BUFLEN);
+        }
+      }
+      if (name) {
+        strlcpy(name, tokens[nameIdx], BUFLEN);
+        // Sanitize '/' to ' '
+        for (char* p = name; *p; ++p) if (*p == '/') *p = ' ';
+      }
+      ovol = 0;
+      return true;
+    } else if (t == 3) {
+      // 3 fields: one is URL, one is name, one is ovol (ovol must be integer 0-255)
+      int urlIdx = -1, nameIdx = -1, ovolIdx = -1;
+      for (int i = 0; i < 3; ++i) {
+        if (strstr(tokens[i], ".") && (strstr(tokens[i], "/") || strstr(tokens[i], "://"))) urlIdx = i;
+        else {
+          char* endptr = nullptr;
+          long val = strtol(tokens[i], &endptr, 10);
+          if (endptr && *endptr == '\0' && val >= 0 && val <= 255) {
+            ovolIdx = i;
+            ovol = (int)val;
+          } else {
+            nameIdx = i;
+          }
+        }
+      }
+      if (urlIdx == -1 || nameIdx == -1) return false;
+      if (url) {
+        if (strncmp(tokens[urlIdx], "http://", 7) != 0 && strncmp(tokens[urlIdx], "https://", 8) != 0) {
+          snprintf(url, BUFLEN, "http://%s", tokens[urlIdx]);
+        } else {
+          strlcpy(url, tokens[urlIdx], BUFLEN);
+        }
+      }
+      if (name) {
+        strlcpy(name, tokens[nameIdx], BUFLEN);
+        // Sanitize '/' to ' '
+        for (char* p = name; *p; ++p) if (*p == '/') *p = ' ';
+      }
+      if (ovolIdx == -1) ovol = 0;
+      return true;
+    } else {
+      // More than 3 fields: invalid for tab-delimited
+      return false;
+    }
+  }
+
+  // --- SPACE-DELIMITED LOGIC ---
+  // Find URL token (must contain dot and slash or ://)
+  int urlIdx = -1;
+  for (int i = 0; i < t; ++i) {
+    if (strstr(tokens[i], ".") && (strstr(tokens[i], "/") || strstr(tokens[i], "://"))) {
+      urlIdx = i;
+      break;
+    }
+  }
+  if (urlIdx == -1) return false; // URL is required
+
+  // Check for ovol at the end (name url ovol)
+  int ovolIdx = -1;
+  if (t == urlIdx + 2) {
+    char* endptr = nullptr;
+    long val = strtol(tokens[t-1], &endptr, 10);
+    if (endptr && *endptr == '\0' && val >= 0 && val <= 255) {
+      ovolIdx = t-1;
+      ovol = (int)val;
+    }
+  }
+
+  // If URL is at the end
+  if (urlIdx == t-1 || (ovolIdx != -1 && urlIdx == t-2)) {
+    // name is everything before URL (or before URL and ovol)
+    if (name) name[0] = 0;
+    int nameEnd = (ovolIdx != -1) ? urlIdx : t-1;
+    for (int i = 0; i < nameEnd; ++i) {
+      if (name && tokens[i][0]) {
+        if (strlen(name) > 0) strlcat(name, " ", BUFLEN);
+        strlcat(name, tokens[i], BUFLEN);
+      }
+    }
+    // URL
+    if (url) {
+      if (strncmp(tokens[urlIdx], "http://", 7) != 0 && strncmp(tokens[urlIdx], "https://", 8) != 0) {
+        snprintf(url, BUFLEN, "http://%s", tokens[urlIdx]);
+      } else {
+        strlcpy(url, tokens[urlIdx], BUFLEN);
+      }
+    }
+    if (ovolIdx == -1) ovol = 0;
+    // If name is missing or empty, use url (minus protocol) as name
+    if ((name == nullptr || strlen(name) == 0) && url && strlen(url) > 0) {
+      const char* u = url;
+      if (strncmp(u, "http://", 7) == 0) u += 7;
+      else if (strncmp(u, "https://", 8) == 0) u += 8;
+      if (name) {
+        strlcpy(name, u, BUFLEN);
+        // Sanitize '/' to ' '
+        for (char* p = name; *p; ++p) if (*p == '/') *p = ' ';
+      }
+    }
+    if (!url || strlen(url) == 0) return false;
+    return true;
+  }
+  // If URL is at the beginning
+  if (urlIdx == 0) {
+    // name is everything after URL (and before ovol if present)
+    if (name) name[0] = 0;
+    int nameStart = 1;
+    int nameEnd = (ovolIdx != -1) ? ovolIdx : t;
+    for (int i = nameStart; i < nameEnd; ++i) {
+      if (name && tokens[i][0]) {
+        if (strlen(name) > 0) strlcat(name, " ", BUFLEN);
+        strlcat(name, tokens[i], BUFLEN);
+      }
+    }
+    // URL
+    if (url) {
+      if (strncmp(tokens[0], "http://", 7) != 0 && strncmp(tokens[0], "https://", 8) != 0) {
+        snprintf(url, BUFLEN, "http://%s", tokens[0]);
+      } else {
+        strlcpy(url, tokens[0], BUFLEN);
+      }
+    }
+    if (ovolIdx == -1) ovol = 0;
+    // If name is missing or empty, use url (minus protocol) as name
+    if ((name == nullptr || strlen(name) == 0) && url && strlen(url) > 0) {
+      const char* u = url;
+      if (strncmp(u, "http://", 7) == 0) u += 7;
+      else if (strncmp(u, "https://", 8) == 0) u += 8;
+      if (name) {
+        strlcpy(name, u, BUFLEN);
+        // Sanitize '/' to ' '
+        for (char* p = name; *p; ++p) if (*p == '/') *p = ' ';
+      }
+    }
+    if (!url || strlen(url) == 0) return false;
+    return true;
+  }
+  // Otherwise, invalid for space-delimited
+  return false;
+}
+
+bool Config::parseJSONnew(const char* line, char* name, char* url, int &ovol) {
+  // Reset outputs
+  if (name) name[0] = 0;
+  if (url) url[0] = 0;
+  ovol = 0;
+
+  // Helper lambda to extract a value by key (key must be quoted, e.g. "name")
+  // Handles both string and numeric values
+  auto extract = [](const char* src, const char* key, char* out, size_t outlen) -> bool {
+    const char* k = strstr(src, key);
+    if (!k) return false;
+    k += strlen(key);
+    // Skip whitespace and colon
+    while (*k && (*k == ' ' || *k == '\t')) k++;
+    if (*k != ':') return false;
+    k++;
+    while (*k && (*k == ' ' || *k == '\t')) k++;
+    if (*k == '"') {
+      // String value
+      k++;
+      const char* end = strchr(k, '"');
+      if (!end) return false;
+      size_t len = end - k;
+      if (len >= outlen) len = outlen - 1;
+      strncpy(out, k, len);
+      out[len] = 0;
+      return true;
+    } else {
+      // Numeric value (int, float, etc.)
+      const char* end = k;
+      while (*end && ((*end >= '0' && *end <= '9') || *end == '-' || *end == '+')) end++;
+      size_t len = end - k;
+      if (len == 0 || len >= outlen) return false;
+      strncpy(out, k, len);
+      out[len] = 0;
+      return true;
+    }
+  };
+
+  // If the line starts with '[', treat as JSON array and extract the first object
+  const char* obj = line;
+  if (line[0] == '[') {
+    // Find the first '{' and the matching '}'
+    const char* start = strchr(line, '{');
+    if (!start) return false;
+    int brace = 1;
+    const char* end = start + 1;
+    while (*end && brace > 0) {
+      if (*end == '{') brace++;
+      else if (*end == '}') brace--;
+      end++;
+    }
+    if (brace != 0) return false;
+    static char objbuf[512];
+    size_t len = end - start;
+    if (len >= sizeof(objbuf)) len = sizeof(objbuf) - 1;
+    strncpy(objbuf, start, len);
+    objbuf[len] = 0;
+    obj = objbuf;
+  }
+
+  char buf[256];
+  // 1. Extract name
+  if (!extract(obj, "\"name\"", name, BUFLEN)) {
+    return false;
+  }
+
+  // 2. Try url_resolved, then url, then host+file+port
+  bool gotUrl = false;
+  if (extract(obj, "\"url_resolved\"", buf, sizeof(buf))) {
+    strncpy(url, buf, BUFLEN);
+    gotUrl = true;
+  } else if (extract(obj, "\"url\"", buf, sizeof(buf))) {
+    strncpy(url, buf, BUFLEN);
+    gotUrl = true;
+  } else {
+    char host[246] = {0}, file[254] = {0}, port[16] = {0};
+    bool gotHost = extract(obj, "\"host\"", host, sizeof(host));
+    bool gotFile = extract(obj, "\"file\"", file, sizeof(file));
+    bool gotPort = extract(obj, "\"port\"", port, sizeof(port));
+    if (gotHost && gotFile) {
+      if (strstr(host, "http://") == NULL && strstr(host, "https://") == NULL) {
+        snprintf(buf, sizeof(buf), "http://%s", host);
+        strlcpy(host, buf, sizeof(host));
+      }
+      if (gotPort && strlen(port) > 0) {
+        snprintf(url, BUFLEN, "%s:%s%s", host, port, file);
+      } else {
+        snprintf(url, BUFLEN, "%s%s", host, file);
+      }
+      gotUrl = true;
+    }
+  }
+  if (!gotUrl || strlen(url) == 0) {
+    return false;
+  }
+
+  // 3. Try ovol, default to 0 if not found
+  char ovolbuf[16] = {0};
+  if (extract(obj, "\"ovol\"", ovolbuf, sizeof(ovolbuf))) {
+    ovol = atoi(ovolbuf);
+  } else {
+    ovol = 0;
+  }
+  return true;
+}
+
 bool Config::parseWsCommand(const char* line, char* cmd, char* val, uint8_t cSize) {
   char *tmpe;
   tmpe = strstr(line, "=");
@@ -590,7 +909,24 @@ bool Config::saveWifiFromNextion(const char* post){
   if (!file) {
     return false;
   } else {
-    file.print(post);
+    // file.print(post);
+    // Ensure CRLF endings for each line (is this needed?)
+    String postStr = String(post);
+    postStr.replace("\r\n", "\n"); // Normalize any CRLF to LF
+    postStr.replace("\r", "\n");   // Normalize any CR to LF
+    int last = 0;
+    while (true) {
+      int next = postStr.indexOf('\n', last);
+      if (next == -1) {
+        String line = postStr.substring(last);
+        if (line.length() > 0) file.print(line + "\r\n");
+        break;
+      } else {
+        String line = postStr.substring(last, next);
+        file.print(line + "\r\n");
+        last = next + 1;
+      }
+    }
     file.close();
     ESP.restart();
     return true;
@@ -702,6 +1038,80 @@ void Config::sleepForAfter(uint16_t sf, uint16_t sa){
   else doSleep();
 }
 
+void cleanStaleSearchResults() {
+  const char* metaPath = "/data/searchresults.json.meta";
+  if (SPIFFS.exists(metaPath)) {
+    File metaFile = SPIFFS.open(metaPath, "r");
+    metaFile.readStringUntil('\n'); // 1st line query
+    String timeStr = metaFile.readStringUntil('\n'); //2nd line is time
+    metaFile.close();
+    if (timeStr.length() > 0) {
+      time_t fileTime = atol(timeStr.c_str());
+      time_t now = time(nullptr);
+      if (now < 100000000 || (now - fileTime) > 86400) {
+        Serial.print("Cleaning stale search results.\n");
+        SPIFFS.remove(metaPath);
+        SPIFFS.remove("/data/searchresults.json");
+        SPIFFS.remove("/data/search.txt");
+      }
+    }
+  }
+}
+
+void fixPlaylistFileEnding() {
+  const char* playlistPath = PLAYLIST_PATH;
+  if (!SPIFFS.exists(playlistPath)) return;
+  File playlistfile = SPIFFS.open(playlistPath, "r+");
+  if (!playlistfile) return;
+  size_t sz = playlistfile.size();
+  if (sz < 2) { playlistfile.close(); return; }
+  playlistfile.seek(sz - 2, SeekSet);
+  char last2[3] = {0};
+  playlistfile.read((uint8_t*)last2, 2);
+  if (!(last2[0] == '\r' && last2[1] == '\n')) {
+    playlistfile.seek(sz, SeekSet);
+    playlistfile.write((const uint8_t*)"\r\n", 2);
+  }
+  playlistfile.close();
+}
+
+void updateFile(void* param, const char* localFile, const char* onlineFile, const char* updatePeriod, const char* simpleName) {
+  char startMsg[128];
+  snprintf(startMsg, sizeof(startMsg), "[ESPFileUpdater: %s] Started update.", simpleName);
+  Serial.println(startMsg);
+  ESPFileUpdater* updater = (ESPFileUpdater*)param;
+  ESPFileUpdater::UpdateStatus result = updater->checkAndUpdate(
+      localFile,
+      onlineFile,
+      updatePeriod,
+      ESPFILEUPDATER_VERBOSE
+  );
+  if (result == ESPFileUpdater::UPDATED) {
+    Serial.printf("[ESPFileUpdater: %s] Update completed.\n", simpleName);
+  } else if (result == ESPFileUpdater::NOT_MODIFIED||result == ESPFileUpdater::MAX_AGE_NOT_REACHED) {
+    Serial.printf("[ESPFileUpdater: %s] No update needed.\n", simpleName);
+  } else {
+    Serial.printf("[ESPFileUpdater: %s] Update failed.\n", simpleName);
+  }
+}
+
+void startAsyncServices(void* param){
+  fixPlaylistFileEnding();
+  // from https://github.com/trip5/timezones.json
+  updateFile(param, "/www/timezones.json.gz", TIMEZONES_JSON_URL, "1 week", "Timezones database file");
+  // from https://all.api.radio-browser.info/
+  updateFile(param, "/www/rb_srvrs.json", RADIO_BROWSER_SERVERS_URL, "4 weeks", "Radio Browser Servers list");
+  cleanStaleSearchResults();
+  vTaskDelete(NULL);
+}
+
+void Config::startAsyncServicesButWait() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  ESPFileUpdater* updater = nullptr;
+  updater = new ESPFileUpdater(SPIFFS);
+  xTaskCreate(startAsyncServices, "startAsyncServices", 8192, updater, 1, NULL); // pass pointer
+}
+
 void Config::bootInfo() {
   BOOTLOG("************************************************");
   BOOTLOG("*               ёRadio v%s             *", YOVERSION);
@@ -716,7 +1126,7 @@ void Config::bootInfo() {
   }
   BOOTLOG("chip:\t\tmodel: %s | rev: %d | id: %d | cores: %d | psram: %d", ESP.getChipModel(), ESP.getChipRevision(), chipId, ESP.getChipCores(), ESP.getPsramSize());
   BOOTLOG("display:\tmodel: %d (CS-%d, DC-%d, RST-%d, SPI-%s)", DSP_MODEL, TFT_CS, TFT_DC, TFT_RST, DSP_HSPI?"HSPI":"VSPI");
-//  BOOTLOG("display:\tmodel: %d, (CS-%d, DC-%d, RST-%d, SPI-%s, MOSI-%d, SCLK-%d)", DSP_MODEL, TFT_CS, TFT_DC, TFT_RST, DSP_HSPI?"HSPI":"VSPI", mosi_pin, sck_pin);
+//  BOOTLOG("display:\tmodel: %d, (CS-%d, DC-%d, RST-%d, SPI-%s, MOSI-%d, SCK-%d)", DSP_MODEL, TFT_CS, TFT_DC, TFT_RST, DSP_HSPI?"HSPI":"VSPI", mosi_pin, sck_pin);
   if(VS1053_CS==255) {
     BOOTLOG("audio:\t\t%s (DOUT-%d, BCLK-%d, LRC-%d)", "I2S", I2S_DOUT, I2S_BCLK, I2S_LRC);
   }else{

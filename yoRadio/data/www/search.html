@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.25">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" type="image/png" href="elogo.png">
+  <link rel="icon" type="image/png" href="elogo.png">
+  <link rel="stylesheet" title="base" href="search.css?%VERSION%" type="text/css">
+  <title>ёRadio - Search</title>
+  <style> </style>
+  </head>
+<body class="modeweb">
+  <div class="content">
+    <h2 class="pagetitle">SёARCH</h2>
+    <div class="quicksearches">
+      <table class="quickbuttontable">
+        <tr>
+          <td><button class="quickbutton" data-genre="60s">60s</button></td>
+          <td><button class="quickbutton" data-genre="70s">70s</button></td>
+          <td><button class="quickbutton" data-genre="80s">80s</button></td>
+          <td><button class="quickbutton" data-genre="90s">90s</button></td>
+          <td><button class="quickbutton" data-genre="2000s">2000s</button></td>
+          <td><button class="quickbutton" data-genre="2010s">2010s</button></td>
+        </tr>
+        <tr>
+          <td><button class="quickbutton" data-genre="pop">pop</button></td>
+          <td><button class="quickbutton" data-genre="top 40">top 40</button></td>
+          <td><button class="quickbutton" data-genre="pop rock">pop rock</button></td>
+          <td><button class="quickbutton" data-genre="oldies">oldies</button></td>
+          <td><button class="quickbutton" data-genre="classic hits">classic hits</button></td>
+          <td><button class="quickbutton" data-genre="rock">rock</button></td>
+        </tr>
+        <tr>
+          <td><button class="quickbutton" data-genre="classic rock">classic rock</button></td>
+          <td><button class="quickbutton" data-genre="country">country</button></td>
+          <td><button class="quickbutton" data-genre="gospel">gospel</button></td>
+          <td><button class="quickbutton" data-genre="folk">folk</button></td>
+          <td><button class="quickbutton" data-genre="indie">indie</button></td>
+          <td><button class="quickbutton" data-genre="jazz">jazz</button></td>
+        </tr>
+        <tr>
+          <td><button class="quickbutton" data-genre="hiphop">hiphop</button></td>
+          <td><button class="quickbutton" data-genre="classical">classical</button></td>
+          <td><button class="quickbutton" data-genre="chillout">chillout</button></td>
+          <td><button class="quickbutton" data-genre="ambient">ambient</button></td>
+          <td><button class="quickbutton" data-genre="electronic">electronic</button></td>
+          <td><button class="quickbutton" data-genre="metal">metal</button></td>
+        </tr>
+      </table>
+    </div> <!-- end of quick searches -->
+
+    <div id="searches">
+      <div id="searchRow1" class="search-row">
+        <button class="button search plus" id="addSearchRowBtn" title="Add search criteria"></button>
+        <select id="searchType1" class="textinput select">
+          <option value="name">Name</option>
+          <option value="tag">Tag / Genre</option>
+          <option value="country">Country</option>
+          <option value="countrycode">Country Code</option>
+          <option value="language">Language</option>
+        </select>
+        <input type="text" class="textinput" id="searchInput1" placeholder="Enter search term">
+        <button class="button search" id="searchBtn" disabled>Search</button>
+      </div>
+      <div id="searchRow2" class="search-row hidden">
+        <button class="button search minus" id="removeSearchRowBtn2" data-row="2" title="Remove search criteria"></button>
+        <select id="searchType2" class="textinput select">
+          <option value="name">Name</option>
+          <option value="tag">Tag / Genre</option>
+          <option value="country">Country</option>
+          <option value="countrycode">Country Code</option>
+          <option value="language">Language</option>
+        </select>
+        <input type="text" class="textinput" id="searchInput2" placeholder="Enter search term">
+      </div>
+      <div id="searchRow3" class="search-row hidden">
+        <button class="button search minus" id="removeSearchRowBtn3" data-row="3" title="Remove search criteria"></button>
+        <select id="searchType3" class="textinput select">
+          <option value="name">Name</option>
+          <option value="tag">Tag / Genre</option>
+          <option value="country">Country</option>
+          <option value="countrycode">Country Code</option>
+          <option value="language">Language</option>
+        </select>
+        <input type="text" class="textinput" id="searchInput3" placeholder="Enter search term">
+      </div>
+    </div> <!-- end of searches -->
+
+    <div class="searchwrap"><!--scrollable search results table -->
+      <div class="scrollable">
+        <table class="stations" id="stationsTable">
+          <!-- Table rows will be dynamically added here -->
+        </table>
+      </div>
+    </div><!--searchwrap-->
+
+    <!-- Page navigation -->
+    <div id="pageNav" class="page-navigation">
+      <button class="button hidden" id="prevPageBtn">&lt;&lt;</button>
+      <span class="hidden" id="pageDisplay">Page 1</span>
+      <button class="button hidden" id="nextPageBtn">&gt;&gt;</button>
+    </div>
+    <div class="button apply done" data-name="searchdone" id="searchdone">done</div>
+    <div id="copy">powered by <a target="_blank" href="https://github.com/e2002/yoradio/">ёRadio</a> | v%VERSION% | search provided by <a target="_blank" href="https://radio-browser.info/">RadioBrowser</a></div>
+  </div>
+  <script src="search.js?%VERSION%"></script>
+</body>

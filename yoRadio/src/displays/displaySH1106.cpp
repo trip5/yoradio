@@ -177,10 +177,14 @@ void DspCore::_clockSeconds(){
 	if (network.timeinfo.tm_sec % 1 == 0)
 	{
            setCursor(BatX, BatY);
-	   if (g == 1) {print("\xA0\xA2\x9E\x9F");} 			// 2 квад. в конце
-	   if (g == 2) {print("\xA0\x9E\x9E\xA3");} 			// 2 квад. по краям
-	   if (g == 3) {print("\x9D\x9E\xA2\xA3");} 			// 2 квад. в начале
-	   if (g >= 4) {g = 0; print("\x9D\xA2\xA2\x9F");} 		// 2 квад. в середине
+           if (g == 1) {print("\xA0\xA2\x9E\x9F");} // 2 квад. в конце
+           //if (g == 1) {print("  ##");} // 2 blocks at the end (ASCII)
+           if (g == 2) {print("\xA0\x9E\x9E\xA3");} // 2 квад. по краям
+           //if (g == 2) {print("#  #");} // 2 blocks at the edges (ASCII)
+           if (g == 3) {print("\x9D\x9E\xA2\xA3");} // 2 квад. в начале
+           //if (g == 3) {print("##  ");} // 2 blocks at the beginning (ASCII)
+           if (g >= 4) {g = 0; print("\x9D\xA2\xA2\x9F");} // 2 квад. в середине
+           //if (g >= 4) {g = 0; print(" ## ");} // 2 blocks in the middle (ASCII)
            g++;
 	}
     }
@@ -192,8 +196,10 @@ void DspCore::_clockSeconds(){
       {
 	 setTextColor(config.theme.clock, config.theme.background);				// Светлый
          setCursor(BatX, BatY);
-         if (d == 1) {print("\xA0\xA2\xA2\xA3");} 			// полная - 6 кв.
-         if (d >= 2) {d = 0; print("\x9D\x9E\x9E\x9F");} 		// пустая - 0 кв.
+         //if (d == 1) {print("####");} // full - 4 blocks (ASCII)
+         if (d == 1) {print("\xA0\xA2\xA2\xA3");} // полная - 6 кв.
+         //if (d >= 2) {d = 0; print("    ");} // empty - 0 blocks (ASCII)
+         if (d >= 2) {d = 0; print("\x9D\x9E\x9E\x9F");} // пустая - 0 кв.
          d++;
       }
      }
@@ -255,13 +261,20 @@ void DspCore::_clockSeconds(){
   {
   setCursor(BatX, BatY);
 
-  if (                         Volt >= 3.82) {print("\xA0\xA2\xA2\xA3");} 	//больше 85 % (6 квад.)
-  if ((Volt < 3.82) && (Volt >= 3.72)) {print("\x9D\xA2\xA2\xA3");} 	//от70 до 85% (5 квад.)
-  if ((Volt < 3.72) && (Volt >= 3.61)) {print("\x9D\xA1\xA2\xA3");} 	//от 55 до 70% (4 квад.)
-  if ((Volt < 3.61) && (Volt >= 3.46)) {print("\x9D\x9E\xA2\xA3");} 	//от 40 до 55% (3 квад.)
-  if ((Volt < 3.46) && (Volt >= 3.33)) {print("\x9D\x9E\xA1\xA3");} 	//от 25 до 40% (2 квад.)
-  if ((Volt < 3.33) && (Volt >= 3.20)) {print("\x9D\x9E\x9E\xA3");} 	//от 10 до 25% (1 квад.)
-  if ((Volt < 3.20) && (Volt >= 2.8)) {print("\x9D\x9E\x9E\x9F");} 	//от 0 до 10% (0 квад.)
+  if (                         Volt >= 3.82) {print("\xA0\xA2\xA2\xA3");}   //больше 85 % (6 квад.)
+  //if (Volt >= 3.82) {print("####");} // >85% (4 blocks, ASCII)
+  if ((Volt < 3.82) && (Volt >= 3.72)) {print("\x9D\xA2\xA2\xA3");}   //от70 до 85% (5 квад.)
+  //if ((Volt < 3.82) && (Volt >= 3.72)) {print("### ");} // 70-85% (3 blocks)
+  if ((Volt < 3.72) && (Volt >= 3.61)) {print("\x9D\xA1\xA2\xA3");}   //от 55 до 70% (4 квад.)
+  //if ((Volt < 3.72) && (Volt >= 3.61)) {print("##  ");} // 55-70% (2 blocks)
+  if ((Volt < 3.61) && (Volt >= 3.46)) {print("\x9D\x9E\xA2\xA3");}   //от 40 до 55% (3 квад.)
+  //if ((Volt < 3.61) && (Volt >= 3.46)) {print("#   ");} // 40-55% (1 block)
+  if ((Volt < 3.46) && (Volt >= 3.33)) {print("\x9D\x9E\xA1\xA3");}   //от 25 до 40% (2 квад.)
+  //if ((Volt < 3.46) && (Volt >= 3.33)) {print("|   ");} // 25-40% (vertical bar)
+  if ((Volt < 3.33) && (Volt >= 3.20)) {print("\x9D\x9E\x9E\xA3");}   //от 10 до 25% (1 квад.)
+  //if ((Volt < 3.33) && (Volt >= 3.20)) {print(".   ");} // 10-25% (dot)
+  if ((Volt < 3.20) && (Volt >= 2.8)) {print("\x9D\x9E\x9E\x9F");}   //от 0 до 10% (0 квад.)
+  //if ((Volt < 3.20) && (Volt >= 2.8)) {print("    ");} // 0-10% (empty)
   }
 
 //  if (Volt < 2.8) {setTextColor(config.theme.background, config.theme.clock);}	// (0%) установка инверсного цвета
