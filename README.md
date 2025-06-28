@@ -298,7 +298,7 @@ Work is in progress...
   - performs search queries to a https://www.radio-browser.info/ server
   - uses ESPFileUpdater to download an up-to-date json of API servers
     - another json can be used by a define in options.h
-      - `#define RADIO_BROWSER_SERVERS_URL "http://37.27.202.89/json/servers"` in `myoptions.h`
+      - `#define RADIO_BROWSER_SERVERS_URL "https://www.radio-browser.info/"` in `myoptions.h`
   - handles down API servers gracefully (and they do go down fairly often)
   - uses ESPFileUpdater to download JSON search results directly from the API to the ESP's file system
     - previous searches are saved and not lost on reboot (50 results, page number)
@@ -316,16 +316,16 @@ Work is in progress...
     - missing name or ovol fields will continue to be imported
     - for example, all of these are valid:
       - space-separated values:
-        nap.casthost.net:8793/stream Intra Nature Radio
-        Ambient Sleeping Pill http://radio.stereoscenic.com/asp-s
-        Super Relax FM https://streams.radio.menu/listen/super-relax-fm/radio.mp3 0
+        `nap.casthost.net:8793/stream Intra Nature Radio`
+        `Ambient Sleeping Pill http://radio.stereoscenic.com/asp-s`
+        `Super Relax FM https://streams.radio.menu/listen/super-relax-fm/radio.mp3 0`
       - tab-separated values:
-        Traxx FM - Ambient	http://traxx011.ice.infomaniak.ch/traxx011-low.mp3	0
-        Positively Meditation	0	https://streaming.positivity.radio/pr/posimeditation/icecast.audio
-        0	Cryosleep	http://streams.echoesofbluemars.org/8000/cryosleep
-        https://ice4.somafm.com/darkzone-128-mp3	Soma FM - Dark Zone 0
+        `Traxx FM - Ambient	http://traxx011.ice.infomaniak.ch/traxx011-low.mp3	0`
+        `Positively Meditation	0	https://streaming.positivity.radio/pr/posimeditation/icecast.audio`
+        `0	Cryosleep	http://streams.echoesofbluemars.org/8000/cryosleep`
+        `https://ice4.somafm.com/darkzone-128-mp3	Soma FM - Dark Zone 0`
       - just the URL
-        https://ice4.somafm.com/dronezone-128-mp3
+        `https://ice4.somafm.com/dronezone-128-mp3`
   - JSON import made more resilient
     - can handle line-by-line files that are not enclosed in [ ]
       - ie. each line looks like `{"name":"Swinging radio 60s","host":"http://s2.xrad.io","file":"/8058/stream","port":"0","ovol":"0"}`
@@ -360,7 +360,7 @@ Work is in progress...
   - AP when WiFi not found has no password
   - Display type added: DSP_ST7789_170
   - VS1053 can use ESP32-S3's SubSPI instead of FSPI
-    - #define VS_SSPI true in myoptions.h
+    - `#define VS_SSPI true` in myoptions.h
       - MISO pin 37, MOSI pin 35, CLK pin 36
       - warning: don't use in ESP32-S3 modules with octal PSRAM
   - notes and ZIP file regarding ESP32-WROOM
