@@ -253,9 +253,9 @@ Work is in progress...
 - fixes for screens that can't display certain characters (add to `myoptions.h`)
   - `#define YO_FIX` // changes ёRadio to yoRadio for screens that can't print ё
   - `#define PRINT_FIX` // fix Chinese certain screens so they don't display gibberish
-    - hijacks utf8RusGFX.h (which is meant for Russian model displays that can handle certain Russian characters)
+    - hijacks `utf8RusGFX.h` (which is meant for Russian model displays that can handle certain Russian characters)
     - will transliterate as many European characters as possible by dropping accents
-    - will transliterate Cyrillic.. probably badly
+    - will transliterate Cyrillic... probably badly
     - will transliterate various punctuation and currency symbols
     - any characters that can't be handled will be replaced by a space
 - ESPFileUpdater can update and download files (used in multiple places)
@@ -278,12 +278,12 @@ Work is in progress...
   - timezone offset completely removed
   - timezones may be changed through WebUI or telnet
   - telnet has some extra functions added
-    - TZO ±X now just changes to a GMT-type (non-standard is OK)
-    - TZO ±X:XX now just changes to a custom timezone (based on GMT-type)
-    - TZPOSIX command can create a custom timezone (be careful)
-    - PLAY url can play a station not on the playlist
+    - `TZO ±X` now just changes to a GMT-type (non-standard is OK)
+    - `TZO ±X:XX` now just changes to a custom timezone (based on GMT-type)
+    - `TZPOSIX` command can create a custom timezone (be careful)
+    - `PLAY url` can play a station not on the playlist
   - Nextion displays only show timezone now, cannot change timezone
-    - there may be a good way to implement with + & - with GMT timezones (see telnet.cpp for some idea)
+    - there may be a good way to implement with + & - with GMT timezones (see `telnet.cpp` for some idea)
     - I have no Nextion display to test (sorry!)
       - sidenote: adding stations via Nextion has been made resilient with new-line endings but unsure if this was needed
 - regional defaults now be defined in `myoptions.h` (defaults in quotes):
