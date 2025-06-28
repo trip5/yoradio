@@ -241,7 +241,7 @@ Work is in progress...
   - might need to do full Erase Flash and Upload program and Filesystem again
   - Filesystem Image MUST be flashed again
   - many settings will be reset to defaults
-  - notes were added to config.cpp how to handle breaking and non-breaking store updates in the future
+  - notes were added to `config.cpp` how to handle breaking and non-breaking store updates in the future
   - future re-flashes should not lose settings after this update
 - EEProm storage removed in favor of Preferences
   - config.store variables may still be used as before
@@ -249,10 +249,10 @@ Work is in progress...
     - char handling improved throughout (size may be changed later with 1 edit to config.h)
       - affects timezone, mdnsname, weather coordinate variables
 - shorter Wi-fi message
-- LED_INVERT fixed
-- fixes for screens that can't display certain characters (add to myoptions.h)
-  - #define YO_FIX // changes ёRadio to yoRadio for screens that can't print ё
-  - #define PRINT_FIX // fix Chinese certain screens so they don't display gibberish
+- LED_INVERT fixed (`#define LED_INVERT`)
+- fixes for screens that can't display certain characters (add to `myoptions.h`)
+  - `#define YO_FIX` // changes ёRadio to yoRadio for screens that can't print ё
+  - `#define PRINT_FIX` // fix Chinese certain screens so they don't display gibberish
     - hijacks utf8RusGFX.h (which is meant for Russian model displays that can handle certain Russian characters)
     - will transliterate as many European characters as possible by dropping accents
     - will transliterate Cyrillic.. probably badly
@@ -263,15 +263,15 @@ Work is in progress...
   - this may be used to load / update any file to SPIFFS from the web
   - really, I hope this library can fulfill more automated functions
   - in theory, you could start with a completely empty SPIFFS!
-  - add #define ESPFILEUPDATER_DEBUG to myoptions.h to get verbose output
+  - add `#define ESPFILEUPDATER_DEBUG` to `myoptions.h` to get verbose output
 - implements proper timezones
   - uses ESPFileUpdater to download an up-to-date json to be used as a selector in the WebUI
   - fetches from https://raw.githubusercontent.com/trip5/timezones.json/refs/heads/master/timezones.gz.json
     - this can be a gzipped or regular json
     - uses github workflow to automatically update whenever tzdb has changed
     - also created for this project
-    - another json.gz can be used by a define in options.h
-      - TIMEZONES_JSON_URL "https://raw.githubusercontent.com/trip5/timezones.json/master/timezones.json.gz"
+    - another json.gz can be used by a define in `myoptions.h` (default in quotes)
+      - `#define TIMEZONES_JSON_URL "https://raw.githubusercontent.com/trip5/timezones.json/master/timezones.json.gz"`
   - will handle Daylight Savings Times
     - does not affect timed functions that use ticks (screensaver, weather)
     - may have side-effects on other timed functions that don't use ticks
@@ -286,19 +286,19 @@ Work is in progress...
     - there may be a good way to implement with + & - with GMT timezones (see telnet.cpp for some idea)
     - I have no Nextion display to test (sorry!)
       - sidenote: adding stations via Nextion has been made resilient with new-line endings but unsure if this was needed
-- regional defaults now be defined in my myoptions.h (defaults in quotes):
-  - #define TIMEZONE_NAME "Europe/Moscow"
-  - #define TIMEZONE_POSIX "MSK-3"
-  - #define SNTP1 "pool.ntp.org"
-  - #define SNTP2 "0.ru.pool.ntp.org"
-  - #define WEATHERLAT "55.7512"
-  - #define WEATHERLON "37.6184"
+- regional defaults now be defined in `myoptions.h` (defaults in quotes):
+  - `#define TIMEZONE_NAME "Europe/Moscow"`
+  - `#define TIMEZONE_POSIX "MSK-3"`
+  - `#define SNTP1 "pool.ntp.org"`
+  - `#define SNTP2 "0.ru.pool.ntp.org"`
+  - `#define WEATHERLAT "55.7512"`
+  - `#define WEATHERLON "37.6184"`
   - all can still be edited using WebUI
 - Radio station search via Radio Browser API
   - performs search queries to a https://www.radio-browser.info/ server
   - uses ESPFileUpdater to download an up-to-date json of API servers
     - another json can be used by a define in options.h
-      - #define RADIO_BROWSER_SERVERS_URL "http://37.27.202.89/json/servers"
+      - `#define RADIO_BROWSER_SERVERS_URL "http://37.27.202.89/json/servers"` in `myoptions.h`
   - handles down API servers gracefully (and they do go down fairly often)
   - uses ESPFileUpdater to download JSON search results directly from the API to the ESP's file system
     - previous searches are saved and not lost on reboot (50 results, page number)
@@ -343,19 +343,19 @@ Work is in progress...
     - these are all hand-coded into the various display drivers
     - may not display correctly on Chinese or other displays
     - originally on by default, now off by default
-      - use #define BATTERY_WIDGET in myoptions.h to turn it on
+      - use `#define BATTERY_WIDGET` in `myoptions.h` to turn it on
       - uses default ADC_PIN from your board definition
-        - #define ADC_PIN if not using default (use 1, 2, 36, or 39, default is 1 or 36 depending on board)
-      - use #define R1, #define R2, #define DELTA_BAT to specify resistors and delta
-        - #define R1 50 (resistor from battery positive to ADC_PIN, default 50 = 50k ohm)
-        - #define R2 100 (resistor from ADC_PIN to GND, default 100 = 100k ohm)
-        - #define DELTA_BAT (simple addition or subtraction to correct the calculation, default 0)
+        - `#define ADC_PIN` if not using default (use 1, 2, 36, or 39, default is 1 or 36 depending on board)
+      - use `#define R1`, `#define R2`, `#define DELTA_BAT` in `myoptions.h` to specify resistors and delta
+        - `#define R1 50` (resistor from battery positive to ADC_PIN, default 50 = 50k ohm)
+        - `#define R2 100` (resistor from ADC_PIN to GND, default 100 = 100k ohm)
+        - `#define DELTA_BAT` (simple addition or subtraction to correct the calculation, default 0)
   - screensavers both measured in seconds
   - includes BacklightDown plugin
     - dims the display after awhile
-      - #define BRIGHTNESS_PIN must be in your options
-      - #define DOWN_LEVEL 2 (brightness level 0 to 255, default 2 )
-      - #define DOWN_INTERVAL 60 (seconds to dim, default 60 = 60 seconds)
+      - `#define BRIGHTNESS_PIN` must be in your `myoptions.h`
+      - `#define DOWN_LEVEL 2` (brightness level 0 to 255, default 2 )
+      - `#define DOWN_INTERVAL 60` (seconds to dim, default 60 = 60 seconds)
   - various fixes to weather display
   - AP when WiFi not found has no password
   - Display type added: DSP_ST7789_170
