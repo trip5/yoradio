@@ -245,8 +245,8 @@ Work is in progress...
   - future re-flashes should not lose settings after this update
 - EEProm storage removed in favor of Preferences
   - config.store variables may still be used as before
-  - no need to handle store version changes except by adding old ones to the "remove" list in config.cpp
-    - char handling improved throughout (size may be changed later with 1 edit to config.h)
+  - no need to handle store version changes except by adding old ones to the "remove" list in `config.cpp`
+    - char handling improved throughout (size may be changed later with 1 edit to `config.h`)
       - affects timezone, mdnsname, weather coordinate variables
 - shorter Wi-fi message
 - LED_INVERT fixed (`#define LED_INVERT`)
