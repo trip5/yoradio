@@ -502,7 +502,7 @@ The connection tables are located here https://github.com/e2002/yoradio#connecti
 #define TIMEZONES_JSON_URL "https://raw.githubusercontent.com/trip5/timezones.json/master/timezones.json.gz"
 #endif
 #ifndef RADIO_BROWSER_SERVERS_URL 
-#define RADIO_BROWSER_SERVERS_URL "hhttps://all.api.radio-browser.info/json/servers"
+#define RADIO_BROWSER_SERVERS_URL "https://all.api.radio-browser.info/json/servers"
 #endif
 
 /*        REGION DEFAULTS         */
