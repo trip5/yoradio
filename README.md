@@ -238,6 +238,7 @@ Work is in progress...
 ### 0.9.434(m)/Trip5/2025.06.29
 
 - BREAKING CHANGES
+  - requires a large SPIFFS partition (check the serial logs during search if you have issues)
   - might need to do full Erase Flash and Upload program and Filesystem again
   - Filesystem Image MUST be flashed again
   - many settings will be reset to defaults
