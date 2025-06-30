@@ -1,7 +1,7 @@
 #include "netserver.h"
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
-#include "ESPFileUpdater/ESPFileUpdater.h"
+#include "../ESPFileUpdater/ESPFileUpdater.h"
 #include "config.h"
 #include "player.h"
 #include "telnet.h"
