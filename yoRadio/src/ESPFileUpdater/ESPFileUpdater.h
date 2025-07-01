@@ -1,12 +1,5 @@
 #pragma once
 
-// Compatibility for mbedtls_sha256_*_ret functions (for older ESP32 Arduino cores)
-#if !defined(mbedtls_sha256_starts_ret)
-#define mbedtls_sha256_starts_ret mbedtls_sha256_starts
-#define mbedtls_sha256_update_ret mbedtls_sha256_update
-#define mbedtls_sha256_finish_ret mbedtls_sha256_finish
-#endif
-
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <FS.h>
