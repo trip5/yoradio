@@ -14,14 +14,19 @@
 
 /* - - - = = = - - - Auto-update Firmware File Name - - - = = = - - - */
 #if defined(DSP_SH1106_PCM_I2S_REMOTE)
+#undef FIRMWARE
 #define FIRMWARE firmware-dsp_sh1106-pcm_i2s-remote.bin
 #elif defined(DSP_SH1106_VS1053_3_BUTTONS)
+#undef FIRMWARE
 #define FIRMWARE firmware-dsp_sh1006-vs1053-3_buttons.bin
 #elif defined(DSP_ILI9488_PCM_I2S)
+#undef FIRMWARE
 #define FIRMWARE firmware-dsp_ili9488-pcm_i2s.bin
 #elif defined(DSP_ST7735_PCM_I2S)
+#undef FIRMWARE
 #define FIRMWARE firmware-dsp_st7735-pcm_i2s.bin
 #else //ESP32_S3_N16R8_TEST_BOARD
+#undef FIRMWARE
 #define FIRMWARE firmware-esp32_s3_n16r8-test_board.bin
 #endif
 
