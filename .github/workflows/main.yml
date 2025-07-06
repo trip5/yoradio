@@ -1,0 +1,51 @@
+name: Build Trip5 Firmware
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build all environments
+        run: pio run
+
+      - name: Rename firmware files with env name
+        run: |
+          for d in .pio/build/*/ ; do
+            env=$(basename "$d")
+            if [ -f "$d/firmware.bin" ]; then
+              cp "$d/firmware.bin" ".pio/build/${env}.bin"
+            fi
+          done
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: .pio/build/*.bin
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: |
+            .pio/build/*.bin
+            yoRadio/data/www/*
+
+            yoRadio/data/data/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
