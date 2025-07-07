@@ -1,10 +1,8 @@
 #ifndef myoptions_h
 #define myoptions_h
 
-/* Board */
-#define ARDUINO_ESP32S3_DEV
+/* - - - = = = - - - Choose the Radio (defined by platformio.ini env) - - - = = = - - - */
 
-/* - - - = = = - - - Choose the Radio (defined by env) - - - = = = - - - */
 //#define ESP32_S3_N16R8_TEST_BOARD // bare board for testing purposes
 //#define DSP_SH1106_PCM_I2S_REMOTE // Self-contained with OLED and Remote
 //#define DSP_SH1106_VS1053_3_BUTTONS // Ali Speaker with OLED, VS1053, Remote
@@ -13,6 +11,7 @@
 
 
 /* - - - = = = - - - Auto-update Firmware File Name - - - = = = - - - */
+
 #if defined(DSP_SH1106_PCM_I2S_REMOTE)
 #undef FIRMWARE
 #define FIRMWARE "firmware-dsp_sh1106-pcm_i2s-remote.bin"
@@ -30,13 +29,18 @@
 #define FIRMWARE "firmware-esp32_s3_n16r8-test_board.bin"
 #endif
 
+/* --- BOARD --- */
+
+/* Everything so far uses */
+#define ARDUINO_ESP32S3_DEV
 
 
 /* --- LED --- */
-/* S3 RGB LED (all) */
-#define USE_BUILTIN_LED   false /* usually...! Unless you actually want to use the builtin as defined by the board's .h file*/
 
-#ifdef DSP_SH1106_PCM_I2S_REMOTE
+/* S3 RGB LED (all) */
+#define USE_BUILTIN_LED   false /* usually...! Unless you actually want to use the builtin as defined by the board's .h file */
+
+#if defined(DSP_SH1106_PCM_I2S_REMOTE)
 /* LED config for Self-contained - on remote */
 #define LED_BUILTIN_S3 8
 #define LED_INVERT	true
@@ -47,7 +51,9 @@
 //#define LED_BUILTIN 48 /* actual PIN is 48 on S3 Antennas (and never use this line?) */
 #endif
 
+
 /* --- DISPLAY --- */
+
 #if defined(DSP_SH1106_PCM_I2S_REMOTE) || defined(DSP_SH1106_VS1053_3_BUTTONS)
 /* Display config for I2C OLED displays (pick one) */
 //#define DSP_MODEL			DSP_SSD1306x32 /* Tiny OLED (didn't build any yet) */
@@ -91,12 +97,14 @@
 #define TFT_CS			9
 #define BRIGHTNESS_PIN	4
 #define TFT_RST			-1 /* set to -1 if connected to ESP EN pin */
-#define DOWN_LEVEL 63     /* (brightness level 0 to 255, default 2 ) */
-#define DOWN_INTERVAL 60   /* (seconds to dim, default 60 = 60 seconds) */
+#define DOWN_LEVEL 63     /* Maleksm's mod: brightness level 0 to 255, default 2 */
+#define DOWN_INTERVAL 60   /* Maleksm's mod: seconds to dim, default 60 = 60 seconds */
 /* modify src\displays\displayILI9488.cpp -- in section DspCore::initDisplay and add setRotation(3); to do 180 degree rotation */
 #endif
 
-/* --- AUDIO ENCODER --- */
+
+/* --- AUDIO DECODER --- */
+
 #if defined(DSP_SH1106_VS1053_3_BUTTONS)
 /* SPI VS1053 config for OLEDs */
 #define VS_HSPI       false
@@ -123,7 +131,9 @@
 #define VS1053_CS     255 // set to 255 to disable VS1053
 #endif
 
+
 /* --- BUTTONS --- */
+
 #if defined(DSP_SH1106_VS1053_3_BUTTONS)
 /* Button config for OLED with 3 Buttons */
 #define BTN_UP                17           /*  Prev, Move Up */
@@ -147,12 +157,14 @@
 #endif
 
 /* Extras: unused in all */
-//#define BTN_INTERNALPULLUP    false          /*  Enable the weak pull up resistors */
+//#define BTN_INTERNALPULLUP    false         /*  Enable the weak pull up resistors */
 //#define BTN_LONGPRESS_LOOP_DELAY    200     /*  Delay between calling DuringLongPress event */
 //#define BTN_CLICK_TICKS    300              /*  Event Timing https://github.com/mathertel/OneButton#event-timing */
 //#define BTN_PRESS_TICKS    500              /*  Event Timing https://github.com/mathertel/OneButton#event-timing */
 
-/* ROTARY ENCODER(S) */
+
+/* --- ROTARY ENCODER(S) --- */
+
 #if defined(DSP_SH1106_VS1053_3_BUTTONS) || defined(DSP_ST7735_PCM_I2S) || defined(DSP_ILI9488_PCM_I2S) ||\
     defined(DSP_SH1106_PCM_I2S_REMOTE)
 /* Rotary Encoder: OLED, TFT Red, Big Screen, Self-contained */
@@ -173,7 +185,9 @@
 //#define ENC2_INTERNALPULLUP    true
 //#define ENC2_HALFQUARD         false
 
+
 /* --- SD CARD --- */
+
 #if defined(DSP_ST7735_PCM_I2S) || defined(DSP_SH1106_PCM_I2S_REMOTE)
 /* SD Card config for TFT Red, Self-contained */
 #define SD_SPIPINS	21, 13, 14			/* SCK, MISO, MOSI */
@@ -185,8 +199,15 @@
 #define SDC_CS			47
 #endif
 
-/* This section will only work on your time_zones fork */
-/* Override defaults */
+/* Extras: unused in all */
+//#define SD_HSPI /* false (not needed when using custom pins) */
+//#define SDSPISPEED 8000000 /* Default speed 4000000 but try 8000000? */
+// actually default is 20000000 ?? so whoops means 40000000 is okay?
+//#define SDSPISPEED 8000000
+
+
+/* --- REGIONAL DEFAULTS --- */
+
 /* Make sure Timezone options conform to TZDB standards */
 /* https://github.com/trip5/timezones.json/blob/master/timezones.json */
 #define TIMEZONES_JSON_URL "https://raw.githubusercontent.com/trip5/timezones.json/master/timezones.json.gz"
@@ -194,6 +215,7 @@
 #define TIMEZONE_POSIX "KST-9"
 #define SNTP1 "pool.ntp.org"
 #define SNTP2 "north-america.pool.ntp.org"
+
 /* Weather Co-ordinates */
 #define WEATHERLAT "55.7512" /* latitude */
 #define WEATHERLON "37.6184" /* longitude */
@@ -201,40 +223,29 @@
 /* Use https://www.radio-browser.info/ API to get JSON of radio streams */
 //#define RADIO_BROWSER_SERVERS_URL "https://all.api.radio-browser.info/json/servers"
 
-/* --- TESTING --- */
+
+/* --- MALEKSM'S BATTERY WIDGET --- */
+
+//#define BATTERY_WIDGET
+//#define ADC_PIN x
+//#define R1
+//#define R2
+//#define DELTA_BAT
+//#define R1 50 // resistor from battery positive to ADC_PIN, default 50 = 50k ohm
+//#define R2 100  // resistor from ADC_PIN to GND, default 100 = 100k ohm
+//#define DELTA_BAT // simple addition or subtraction to correct the calculation, default 0
+
+
+/* --- MORE, UNUSED, UNKNOWN --- */
 
 #define ESPFILEUPDATER_DEBUG
 
-//# Maleksma's battery widget
-//#define BATTERY_WIDGET
-/// (where is it getting the voltage from?)
-// backlight_down stuff (main.cpp)
-// defined(DOWN_LEVEL) || defined(DOWN_INTERVAL)
-
+/* Extras: unused in all */
 //#define L10N_LANGUAGE EN
-
 // #define IR_PIN 4
 
 /* Memory? */
 #define XTASK_MEM_SIZE 4096 /* default 4096*/
-
-//#define SD_HSPI /* false (not needed when using custom pins) */
-//#define SDSPISPEED 8000000 /* Default speed 4000000 but try 8000000? */
-// actually default is 20000000 ?? so whoops means 40000000 is okay?
-//#define SDSPISPEED 8000000
-
-
-/* Below is idea but it's up to me to do some re-programming? Probably won't bother. */
-
-//#define DSP_SPIPINS 1,2,3 			/* SCK, MISO, MOSI */
-
-// this means SPI2 gets defined: SPIClass  SPI2(HOOPSENb);
-// This is what defines the pins of SPI2: SPI2.begin(SPI2_SCK, SPI2_MISO, SPI2_MOSI, SPI2_CS);
-// pre-compiler does #define HSPI  1 (And that's it)
-// This may only be working as it is because of one bus... yup.  HSPI defs get ignored...
-// So need to be able to define custom pins 100%??
-/// Need to run SPIClass beforehand to redefine default behavior?
-// Or perhaps actully put some ifs to redefine any 
 
 /* Does this get carried to SD Lib and allow Exfat? */
 //#define FF_FS_EXFAT 1

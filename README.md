@@ -302,7 +302,7 @@ Work is in progress...
   - performs search queries to a https://www.radio-browser.info/ server
   - uses ESPFileUpdater to download an up-to-date json of API servers
     - another json can be used by a define in options.h
-      - `#define RADIO_BROWSER_SERVERS_URL "https://www.radio-browser.info/"` in `myoptions.h`
+      - `#define RADIO_BROWSER_SERVERS_URL "https://all.api.radio-browser.info/json/servers"` in `myoptions.h`
   - handles down API servers gracefully (and they do go down fairly often)
   - uses ESPFileUpdater to download JSON search results directly from the API to the ESP's file system
     - previous searches are saved and not lost on reboot (50 results, page number)
