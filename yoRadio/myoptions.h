@@ -29,6 +29,7 @@
 #define FIRMWARE "firmware-esp32_s3_n16r8-test_board.bin"
 #endif
 
+
 /* --- BOARD --- */
 
 /* Everything so far uses */
