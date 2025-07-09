@@ -18,6 +18,10 @@
 //#define HIDE_TITLE2
 //#define HIDE_HEAPBAR
 #define HIDE_VU
+
+#ifdef DSP_INVERT_TITLE
+#undef DSP_INVERT_TITLE
+#endif
 #define DSP_INVERT_TITLE false
 
 #ifndef BATTERY_OFF
@@ -39,7 +43,7 @@ const ScrollConfig apSettConf     PROGMEM = {{ TFT_FRAMEWDT, 32-7, 1, WA_LEFT },
 const ScrollConfig weatherConf    PROGMEM = {{ 0, 24, 1, WA_LEFT }, 200, false, DSP_WIDTH, 0, 2, 25 };	// Weather (погода)
 
 /* BACKGROUNGC9106DS  */                       /* {{ left, top, fontsize, align }, width, height, outlined } */
-const FillConfig   metaBGConf     PROGMEM = {{ 0, 0, 0, WA_LEFT }, DSP_WIDTH*-6*4, 9, false };
+const FillConfig   metaBGConf     PROGMEM = {{ 0, 0, 0, WA_LEFT }, DSP_WIDTH-6*4, 9, false };
 const FillConfig   volbarConf     PROGMEM = {{ 0, 8, 0, WA_LEFT }, DSP_WIDTH, 3, true };
 const FillConfig  playlBGConf     PROGMEM = {{ 0, 13, 0, WA_LEFT }, DSP_WIDTH, 9, false };
 const FillConfig  heapbarConf     PROGMEM = {{ 0, 30, 0, WA_LEFT }, DSP_WIDTH, 1, false };
@@ -47,7 +51,7 @@ const FillConfig  heapbarConf     PROGMEM = {{ 0, 30, 0, WA_LEFT }, DSP_WIDTH, 1
 /* WIDGETS  */                           /* { left, top, fontsize, align } */
 const WidgetConfig bootstrConf    PROGMEM = { 0, 24, 1, WA_CENTER };
 const WidgetConfig bitrateConf    PROGMEM = { 0, 13, 1, WA_RIGHT };
-const WidgetConfig voltxtConf     PROGMEM = { 0, 64-11, 1, WA_CENTER };
+const WidgetConfig voltxtConf     PROGMEM = { 0, 20, 1, WA_RIGHT };
 const WidgetConfig  iptxtConf     PROGMEM = { 0, 64-11, 1, WA_LEFT };
 const WidgetConfig   rssiConf     PROGMEM = { 0, 64-11, 1, WA_RIGHT };
 const WidgetConfig numConf        PROGMEM = { 0, 12, 2, WA_CENTER };

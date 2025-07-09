@@ -3,30 +3,40 @@
 
 /* - - - = = = - - - Choose the Radio (defined by platformio.ini env) - - - = = = - - - */
 
-//#define ESP32_S3_N16R8_TEST_BOARD // bare board for testing purposes
-//#define DSP_SH1106_PCM_I2S_REMOTE // Self-contained with OLED and Remote
-//#define DSP_SH1106_VS1053_3_BUTTONS // Ali Speaker with OLED, VS1053, Remote
-//#define DSP_ILI9488_PCM_I2S // Big Screen with PCM, 1 button
-//#define DSP_ST7735_PCM_I2S // Color TFT (red board) with PCM I2S
+#ifndef PLATFORMIO_BUILD // automatic builds define the board anyways (so this section is here for testing)
+// if building ESP32_S3_N16R8_TEST no need to choose a board
+//#define SH1106_PCM_REMOTE // Self-contained OLED with PCM, Remote
+//#define SH1106_PCM_1BUTTON // Mini Tiny OLED with PCM, 1 Button, Speakers built-in
+//#define SSD1306X32_PCM_1BUTTON // Mini Tiny OLED with PCM, 1 Button, Speakers built-in
+//#define SH1106_VS1053_3BUTTONS // Ali Speaker with OLED, VS1053, 3 Buttons
+//#define ILI9488_PCM_1BUTTON // Big Screen with PCM, 1 button
+//#define ST7735_PCM_1BUTTON // Color TFT (red board) with PCM I2S, 1 Button
+#endif
 
 
 /* - - - = = = - - - Auto-update Firmware File Name - - - = = = - - - */
 
-#if defined(DSP_SH1106_PCM_I2S_REMOTE)
+#if defined(SH1106_PCM_REMOTE)
 #undef FIRMWARE
-#define FIRMWARE "firmware-dsp_sh1106-pcm_i2s-remote.bin"
-#elif defined(DSP_SH1106_VS1053_3_BUTTONS)
+#define FIRMWARE "firmware_sh1106_pcm_remote.bin"
+#elif defined(SH1106_PCM_1BUTTON)
 #undef FIRMWARE
-#define FIRMWARE "firmware-dsp_sh1006-vs1053-3_buttons.bin"
-#elif defined(DSP_ILI9488_PCM_I2S)
+#define FIRMWARE "firmware_sh1106_pcm_1button.bin"
+#elif defined(SSD1306X32_PCM_1BUTTON)
 #undef FIRMWARE
-#define FIRMWARE "firmware-dsp_ili9488-pcm_i2s.bin"
-#elif defined(DSP_ST7735_PCM_I2S)
+#define FIRMWARE "firmware_ssd1306x32_pcm_1button.bin"
+#elif defined(SH1106_VS1053_3BUTTONS)
 #undef FIRMWARE
-#define FIRMWARE "firmware-dsp_st7735-pcm_i2s.bin"
-#else //ESP32_S3_N16R8_TEST_BOARD
+#define FIRMWARE "firmware_sh1106_vs1053_3buttons.bin"
+#elif defined(ILI9488_PCM_1BUTTON_1_BUTTON)
 #undef FIRMWARE
-#define FIRMWARE "firmware-esp32_s3_n16r8-test_board.bin"
+#define FIRMWARE "firmware_ili9488_pcm_1button.bin"
+#elif defined(ST7735_PCM_1BUTTON_1_BUTTON)
+#undef FIRMWARE
+#define FIRMWARE "firmware_st7735_pcm_1button.bin"
+#else //ESP32_S3_N16R8_TEST
+#undef FIRMWARE
+#define FIRMWARE "firmware_esp32_s3_n16r8_test.bin"
 #endif
 
 
@@ -41,8 +51,7 @@
 /* S3 RGB LED (all) */
 #define USE_BUILTIN_LED   false /* usually...! Unless you actually want to use the builtin as defined by the board's .h file */
 
-#if defined(DSP_SH1106_PCM_I2S_REMOTE)
-/* LED config for Self-contained - on remote */
+#if defined(SH1106_PCM_REMOTE)
 #define LED_BUILTIN_S3 8
 #define LED_INVERT	true
 #else
@@ -55,25 +64,28 @@
 
 /* --- DISPLAY --- */
 
-#if defined(DSP_SH1106_PCM_I2S_REMOTE) || defined(DSP_SH1106_VS1053_3_BUTTONS)
-/* Display config for I2C OLED displays (pick one) */
-//#define DSP_MODEL			DSP_SSD1306x32 /* Tiny OLED (didn't build any yet) */
-//#define DSP_MODEL			DSP_SSD1306 /* none but maybe useful to note */
+#if defined(SH1106_PCM_REMOTE) || defined(SH1106_PCM_1BUTTON) || defined(SH1106_VS1053_3BUTTONS)
 #define DSP_MODEL			DSP_SH1106 /* Regular OLED - platformio.ini */
 #define YO_FIX
 #define PRINT_FIX
+#define I2C_SDA			42
+#define I2C_SCL			41
+#endif
 
-/* Pins for I2C Displays above */
+#if defined(SSD1306X32_PCM_1BUTTON)
+#define DSP_MODEL			DSP_SSD1306x32 /* Tiny OLED */
+#define YO_FIX
+#define PRINT_FIX
 #define I2C_SDA			42
 #define I2C_SCL			41
 #endif
 
 /* Display config for SPI displays (pick one) */
 /* When using SPI Displays, trying to use same SPI MOSI, SCK, MISO as VS1053 doesn't work */
-#if defined(DSP_ILI9488_PCM_I2S)
+#if defined(ILI9488_PCM_1BUTTON)
 #define DSP_MODEL			DSP_ILI9488 /* Big Display */
 #endif
-#if defined(DSP_ST7735_PCM_I2S)
+#if defined(ST7735_PCM_1BUTTON)
 #define DSP_MODEL			DSP_ST7735 /* Red board / 1.8" Black Tab, if problems try one of DTYPE */
 #define YO_FIX
 #define PRINT_FIX
@@ -83,15 +95,13 @@
 //#define DTYPE			INITR_144GREENTAB /* Add this for 1.44" Green Tab */
 //#define DTYPE			INITR_MINI160x80 /* Add this for 0.96" Mini 160x80 */
 #endif
-#if defined(DSP_ST7735_PCM_I2S)
-/* Pins for SPI Display: Red Board */
+#if defined(ST7735_PCM_1BUTTON)
 #define TFT_DC			10
 #define TFT_CS			9
 #define BRIGHTNESS_PIN	4 /* Red Smaller TFT doesn't have brightness control so leave commented? use unused pin? or 255? */
 #define TFT_RST			-1 /* set to -1 if connected to ESP EN pin */
 #endif
-#if defined(DSP_ILI9488_PCM_I2S)
-/* Pins for SPI Display: Big Display */
+#if defined(ILI9488_PCM_1BUTTON)
 #define YO_FIX
 #define PRINT_FIX
 #define TFT_DC			10
@@ -106,8 +116,7 @@
 
 /* --- AUDIO DECODER --- */
 
-#if defined(DSP_SH1106_VS1053_3_BUTTONS)
-/* SPI VS1053 config for OLEDs */
+#if defined(SH1106_VS1053_3BUTTONS)
 #define VS_HSPI       false
 #define VS1053_CS		9
 #define VS1053_DCS	14
@@ -117,15 +126,13 @@
 #define VS_PATCH_ENABLE false /* For the 2.5V boards with wrong voltage regulator.  See here: https://github.com/e2002/yoradio/issues/108 */
                                 /* Probably works on all...? */
 #endif
-#if defined(DSP_ST7735_PCM_I2S) || defined(DSP_ILI9488_PCM_I2S)
-/* PCM I2S config for TFT Red & Big Display */
+#if defined(ST7735_PCM_1BUTTON) || defined(ILI9488_PCM_1BUTTON)
 #define I2S_DOUT		15
 #define I2S_BCLK		7
 #define I2S_LRC			6
 #define VS1053_CS     255 // set to 255 to disable VS1053
 #endif
-#if defined(DSP_SH1106_PCM_I2S_REMOTE)
-/* PCM I2S config for Self-contained */
+#if defined(SH1106_PCM_REMOTE) || defined(SH1106_PCM_1BUTTON) || defined(SSD1306X32_PCM_1BUTTON)
 #define I2S_DOUT		12
 #define I2S_BCLK		11
 #define I2S_LRC			10
@@ -135,25 +142,24 @@
 
 /* --- BUTTONS --- */
 
-#if defined(DSP_SH1106_VS1053_3_BUTTONS)
-/* Button config for OLED with 3 Buttons */
+#if defined(SH1106_VS1053_3BUTTONS)
 #define BTN_UP                17           /*  Prev, Move Up */
 #define BTN_DOWN              18           /*  Next, Move Down */
 #define BTN_MODE              16           /*  MODE switcher  */
 #define WAKE_PIN              16           /*  Wake from Deepsleep (actually using existing pins kind of disables sleep) */
 #endif
-#if defined(DSP_SH1106_PCM_I2S_REMOTE)
-/*Button config for Self-contained - buttons on remote */
+#if defined(SH1106_PCM_1BUTTON) || defined(SSD1306X32_PCM_1BUTTON)
+#define BTN_DOWN              17           /*  Next, Move Down */
+#endif
+#if defined(SH1106_PCM_REMOTE)
 #define BTN_UP                17          /*  Prev, Move Up */
 #define BTN_DOWN              16          /*  Next, Move Down */
-//#define BTN_MODE              18          /*  MODE switcher  */
 #define BTN_CENTER            18          /*  ENTER, Play/pause  */
 #define BTN_LEFT              7           /*  VolDown, Prev */
 #define BTN_RIGHT             15          /*  VolUp, Next */
 #define WAKE_PIN              18          /*  Wake from Deepsleep (actually using existing pins kind of disables sleep) */
 #endif
-#if defined(DSP_ST7735_PCM_I2S) || defined(DSP_ILI9488_PCM_I2S)
-/* TFT Red & Big Screen Version - just one button */
+#if defined(ST7735_PCM_1BUTTON) || defined(ILI9488_PCM_1BUTTON)
 #define BTN_DOWN              42           /*  Next, Move Down */
 #endif
 
@@ -166,12 +172,15 @@
 
 /* --- ROTARY ENCODER(S) --- */
 
-#if defined(DSP_SH1106_VS1053_3_BUTTONS) || defined(DSP_ST7735_PCM_I2S) || defined(DSP_ILI9488_PCM_I2S) ||\
-    defined(DSP_SH1106_PCM_I2S_REMOTE)
-/* Rotary Encoder: OLED, TFT Red, Big Screen, Self-contained */
+#if defined(SH1106_VS1053_3BUTTONS) || defined(ST7735_PCM_1BUTTON) || defined(ILI9488_PCM_1BUTTON) ||\
+    defined(SH1106_PCM_REMOTE)
 #define ENC_BTNR			40
 #define ENC_BTNL			39
 #define ENC_BTNB			38
+#elif defined(SH1106_PCM_1BUTTON) || defined(SSD1306X32_PCM_1BUTTON)
+#define ENC_BTNR			7
+#define ENC_BTNL			15
+#define ENC_BTNB			16
 #endif
 
 /* Extras: unused in all */
@@ -189,13 +198,11 @@
 
 /* --- SD CARD --- */
 
-#if defined(DSP_ST7735_PCM_I2S) || defined(DSP_SH1106_PCM_I2S_REMOTE)
-/* SD Card config for TFT Red, Self-contained */
+#if defined(ST7735_PCM_1BUTTON) || defined(SH1106_PCM_REMOTE) || defined(SH1106_PCM_1BUTTON) ||\
+    defined(SSD1306X32_PCM_1BUTTON)
 #define SD_SPIPINS	21, 13, 14			/* SCK, MISO, MOSI */
 #define SDC_CS			47
-#endif
-#if defined(DSP_SH1106_VS1053_3_BUTTONS ) || defined(DSP_ILI9488_PCM_I2S)
-/* SD Card config for OLED, Big Screen */
+#elif defined(SH1106_VS1053_3BUTTONS ) || defined(ILI9488_PCM_1BUTTON)
 #define SD_SPIPINS	21, 2, 1			/* SCK, MISO, MOSI */
 #define SDC_CS			47
 #endif
