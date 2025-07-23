@@ -235,6 +235,13 @@ Work is in progress...
 ---
 ## Version history
 
+### 0.9.533 Trip5/2025.07.23
+
+- minor additions to UI / display options
+  - one-click option ignores long-press right/left
+  - 12-hour clock
+  - hide volume page (instead of using a `#define`)
+
 ### 0.9.533 Trip5/2025.07.20
 
 - BREAKING CHANGES
@@ -289,11 +296,7 @@ Work is in progress...
         - `git tag -d 2025.07.20`
         - `git tag -a 2025.07.20 -m "2025.07.20"`
         - `git push origin 2025.07.20 --force`
-    - this means you can just download a .bin file and flash from a command line
-      - for example, for ESP32-S3
-        - `esptool --chip esp32s3 --port com14 --baud 460800 write_flash -z 0x0000 bootloader.bin 0x8000 partitions.bin 0x10000 firmware.bin`
-      - you could upload SPIFFS too but keep in mind it will erase any files already there (the playlist and Wi-fi data)
-        - add this to the above command: `0x00670000 spiffs.bin`
+    - this means you can just download a .bin file and flash from a command line (see the Release page for detailed instructions)
 - implements proper timezones
   - uses ESPFileUpdater to download an up-to-date json to be used as a selector in the WebUI
   - fetches from https://raw.githubusercontent.com/trip5/timezones.json/refs/heads/master/timezones.gz.json

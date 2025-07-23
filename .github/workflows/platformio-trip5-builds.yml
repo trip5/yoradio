@@ -72,31 +72,31 @@ jobs:
 
 # Here we also make some OTA-TEST builds (to be deleted later)
 
-      - name: Prepare TEST-OTA version in options.h
-        run: |
-          # append “-OTA-TEST” inside the quotes of the YOVERSION line
-          sed -i '/#define YOVERSION/ s/"\([^"]*\)"/"\1-OTA-TEST"/' yoRadio/src/core/options.h
+#      - name: Prepare TEST-OTA version in options.h
+#        run: |
+#          # append “-OTA-TEST” inside the quotes of the YOVERSION line
+#          sed -i '/#define YOVERSION/ s/"\([^"]*\)"/"\1-OTA-TEST"/' yoRadio/src/core/options.h
 
-      - name: Prepare TEST-OTA PlatformIO builds in platformio.ini
-        run: |
-          # for every “[env:…]” line, append “_ota_test” before the closing bracket
-          sed -i '/^\[env:/ s/]/_ota_test]/' platformio.ini
-          # also update any ${env:…​.lib_deps} macros to include _ota_test
-          sed -Ei 's|\$\{env:([^}]+)\.lib_deps\}|\$\{env:\1_ota_test.lib_deps\}|g' platformio.ini
-          # update any extends = env:… lines to include _ota_test
-          sed -i 's/^\(extends[[:space:]]*=[[:space:]]*env:[^[:space:]]*\)/\1_ota_test/' platformio.ini
+#      - name: Prepare TEST-OTA PlatformIO builds in platformio.ini
+#        run: |
+#          # for every “[env:…]” line, append “_ota_test” before the closing bracket
+#          sed -i '/^\[env:/ s/]/_ota_test]/' platformio.ini
+#          # also update any ${env:…​.lib_deps} macros to include _ota_test
+#          sed -Ei 's|\$\{env:([^}]+)\.lib_deps\}|\$\{env:\1_ota_test.lib_deps\}|g' platformio.ini
+#          # update any extends = env:… lines to include _ota_test
+#          sed -i 's/^\(extends[[:space:]]*=[[:space:]]*env:[^[:space:]]*\)/\1_ota_test/' platformio.ini
 
-      - name: Build TEST-OTA firmwares
-        run: pio run
+#      - name: Build TEST-OTA firmwares
+#        run: pio run
 
-      - name: Rename firmware files with env name
-        run: |
-          for d in .pio/build/*/ ; do
-            env=$(basename "$d")
-            if [ -f "$d/firmware.bin" ]; then
-              cp "$d/firmware.bin" "binaries/${env}.bin"
-            fi
-          done
+#      - name: Rename firmware files with env name
+#        run: |
+#          for d in .pio/build/*/ ; do
+#            env=$(basename "$d")
+#            if [ -f "$d/firmware.bin" ]; then
+#              cp "$d/firmware.bin" "binaries/${env}.bin"
+#            fi
+#          done
 
 # End of OTA-TEST builds
 
@@ -120,6 +120,9 @@ jobs:
                 - `esptool --chip esp32s3 --port com14 --baud 460800 write_flash -z 0x0000 esp32_s3_bootloader.bin 0x8000 esp32_s3_partitions.bin 0x10000 esp32_s3_*.bin`
                 - to include spiffs, add this to the above command: `0x00670000 esp32_s3_spiffs.bin`
                   - this is a standard partition format for ESP32-S3 with 8MB of flash
+              - the `_ota_test` files are just to show off that online OTA can work
+                - functionally identical to a normal .bin
+                - they have a "fake" version that will allow an update to a normal .bin
             ## Boards
               - each of the pre-built board binaries have pre-set hardware configurations, they cannot be changed
               - to view pin usage, click the link and scroll down then click preview

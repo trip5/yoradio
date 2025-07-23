@@ -362,7 +362,7 @@ void NetServer::processQueue(){
                                   config.vuThreshold,
                                   config.store.mdnsname); 
                                   break;
-      case GETSCREEN:     sprintf (wsbuf, "{\"flip\":%d,\"inv\":%d,\"nump\":%d,\"tsf\":%d,\"tsd\":%d,\"dspon\":%d,\"br\":%d,\"con\":%d,\"scre\":%d,\"scrt\":%d,\"scrb\":%d,\"scrpe\":%d,\"scrpt\":%d,\"scrpb\":%d}", 
+      case GETSCREEN:     sprintf (wsbuf, "{\"flip\":%d,\"inv\":%d,\"nump\":%d,\"tsf\":%d,\"tsd\":%d,\"dspon\":%d,\"br\":%d,\"con\":%d,\"scre\":%d,\"scrt\":%d,\"scrb\":%d,\"scrpe\":%d,\"scrpt\":%d,\"scrpb\":%d,\"volumepage\":%d,\"clock12\":%d}", 
                                   config.store.flipscreen, 
                                   config.store.invertdisplay, 
                                   config.store.numplaylist, 
@@ -376,7 +376,9 @@ void NetServer::processQueue(){
                                   config.store.screensaverBlank,
                                   config.store.screensaverPlayingEnabled,
                                   config.store.screensaverPlayingTimeout,
-                                  config.store.screensaverPlayingBlank);
+                                  config.store.screensaverPlayingBlank,
+                                  config.store.volumepage, 
+                                  config.store.clock12);
                                   break;
       case GETTIMEZONE:   sprintf (wsbuf, "{\"tz_name\":\"%s\",\"tzposix\":\"%s\",\"sntp1\":\"%s\",\"sntp2\":\"%s\"}",
                                   config.store.tz_name, 

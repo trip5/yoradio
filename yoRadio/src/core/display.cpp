@@ -5,6 +5,7 @@
 #include "display.h"
 #include "player.h"
 #include "network.h"
+#include "config.h"
 
 
 Display display;
@@ -305,13 +306,13 @@ void Display::_swichMode(displayMode_e newmode) {
     config.isScreensaver = false;
   }
   if (newmode == VOL) {
-    #ifndef HIDE_VOLPAGE
+    if (config.store.volumepage) {
       #ifndef HIDE_IP
         _showDialog(const_DlgVolume);
       #else
         _showDialog(WiFi.localIP().toString().c_str());
       #endif
-    #endif
+    }
     _nums.setText(config.store.volume, numtxtFmt);
   }
   if (newmode == LOST)      _showDialog(const_DlgLost);

@@ -420,7 +420,8 @@ void Nextion::newTitle(const char* title){
 
 void Nextion::printClock(struct tm timeinfo){
   char timeStringBuff[100] = { 0 };
-  strftime(timeStringBuff, sizeof(timeStringBuff), "player.clock.txt=\"%H:%M\"", &timeinfo);
+  if (config.store.clock12) strftime(timeStringBuff, sizeof(timeStringBuff), "player.clock.txt=\"%l:%M\"", &timeinfo);
+  if (!config.store.clock12) strftime(timeStringBuff, sizeof(timeStringBuff), "player.clock.txt=\"%H:%M\"", &timeinfo);
   putcmd(timeStringBuff);
   putcmdf("player.secText.txt=\"%02d\"", timeinfo.tm_sec);
   snprintf(timeStringBuff, sizeof(timeStringBuff), "player.dateText.txt=\"%s, %d %s %d\"", dowf[timeinfo.tm_wday], timeinfo.tm_mday, mnths[timeinfo.tm_mon], timeinfo.tm_year+1900);
@@ -431,7 +432,8 @@ void Nextion::printClock(struct tm timeinfo){
 
 void Nextion::localTime(struct tm timeinfo){
   char timeStringBuff[40] = { 0 };
-  strftime(timeStringBuff, sizeof(timeStringBuff), "localTime.txt=\"%H:%M:%S\"", &timeinfo);
+  if (config.store.clock12) strftime(timeStringBuff, sizeof(timeStringBuff), "localTime.txt=\"%l:%M:%S\"", &timeinfo);
+  if (!config.store.clock12) strftime(timeStringBuff, sizeof(timeStringBuff), "localTime.txt=\"%H:%M:%S\"", &timeinfo);
   putcmd(timeStringBuff);
 }
 

@@ -109,6 +109,8 @@ struct config_t // specify defaults here (defaults are NOT saved to Prefs)
   bool      vumeter = false;
   uint8_t   softapdelay = 0;
   bool      flipscreen = false;
+  bool      volumepage = true;
+  bool      clock12 = false;
   bool      invertdisplay = false;
   bool      numplaylist = false;
   bool      fliptouch = false;

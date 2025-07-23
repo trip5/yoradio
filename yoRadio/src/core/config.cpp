@@ -402,6 +402,8 @@ void Config::resetSystem(const char *val, uint8_t clientId){
   }
   if (strcmp(val, "screen") == 0) {
     saveValue(&store.flipscreen, false, false);
+    saveValue(&store.volumepage, true);
+    saveValue(&store.clock12, false);
     display.flip();
     saveValue(&store.invertdisplay, false, false);
     display.invert();
@@ -1307,6 +1309,8 @@ void Config::bootInfo() {
   BOOTLOG("vumeter:\t%s", store.vumeter?"true":"false");
   BOOTLOG("softapdelay:\t%d", store.softapdelay);
   BOOTLOG("flipscreen:\t%s", store.flipscreen?"true":"false");
+  BOOTLOG("volumepage:\t%s", store.volumepage?"true":"false");
+  BOOTLOG("clock12:\t%s", store.clock12?"true":"false");
   BOOTLOG("invertdisplay:\t%s", store.invertdisplay?"true":"false");
   BOOTLOG("showweather:\t%s", store.showweather?"true":"false");
   BOOTLOG("buttons:\tleft=%d, center=%d, right=%d, up=%d, down=%d, mode=%d, pullup=%s", 
@@ -1339,6 +1343,8 @@ const configKeyMap Config::keyMap[] = {
   CONFIG_KEY_ENTRY(vumeter, "vumeter"),
   CONFIG_KEY_ENTRY(softapdelay, "softapdelay"),
   CONFIG_KEY_ENTRY(flipscreen, "flipscr"),
+  CONFIG_KEY_ENTRY(volumepage, "volpage"),
+  CONFIG_KEY_ENTRY(clock12, "clock12"),
   CONFIG_KEY_ENTRY(invertdisplay, "invdisp"),
   CONFIG_KEY_ENTRY(numplaylist, "numplaylist"),
   CONFIG_KEY_ENTRY(fliptouch, "fliptouch"),
