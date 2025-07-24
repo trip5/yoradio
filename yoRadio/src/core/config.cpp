@@ -1,6 +1,5 @@
 #include "config.h"
 
-//#include <SPIFFS.h>
 #include "display.h"
 #include "player.h"
 #include "network.h"
@@ -32,7 +31,7 @@ bool Config::_isFSempty() {
   char fullpath[32];
   for (size_t i = 0; i < requiredFilesCount; i++) {
     sprintf(fullpath, "/www/%s", requiredFiles[i]);
-    if(!SPIFFS.exists(fullpath)) {
+    if(!LittleFS.exists(fullpath)) {
       Serial.println(fullpath);
       return true;
     }
@@ -75,27 +74,27 @@ void Config::init() {
   store.play_mode = store.play_mode & 0b11;
   if(store.play_mode>1) store.play_mode=PM_WEB;
   _initHW();
-  if (!SPIFFS.begin(true)) {
-    Serial.println("##[ERROR]#\tSPIFFS Mount Failed");
+  if (!LittleFS.begin(true)) {
+    Serial.println("##[ERROR]#\tLittleFS Mount Failed");
     return;
   }
-  BOOTLOG("SPIFFS mounted");
+  BOOTLOG("LittleFS mounted");
   emptyFS = _isFSempty();
   if(emptyFS) {
     #ifndef FILESURL
-      BOOTLOG("SPIFFS is empty!");
+      BOOTLOG("LittleFS is empty!");
     #else
-      BOOTLOG("SPIFFS is empty.  Will attempt to get files from online...");
-      File markerFile = SPIFFS.open(ONLINEUPDATE_MARKERFILE, "w");
+      BOOTLOG("LittleFS is empty.  Will attempt to get files from online...");
+      File markerFile = LittleFS.open(ONLINEUPDATE_MARKERFILE, "w");
       if (markerFile) markerFile.close();
       display.putRequest(NEWMODE, UPDATING);
     #endif
   }
   ssidsCount = 0;
   #ifdef USE_SD
-  _SDplaylistFS = getMode()==PM_SDCARD?&sdman:(true?&SPIFFS:_SDplaylistFS);
+  _SDplaylistFS = getMode()==PM_SDCARD?&sdman:(true?&LittleFS:_SDplaylistFS);
   #else
-  _SDplaylistFS = &SPIFFS;
+  _SDplaylistFS = &LittleFS;
   #endif
   _bootDone=false;
 }
@@ -154,7 +153,7 @@ void Config::changeMode(int newmode){
     store.play_mode=(playMode_e)newmode;
   }
   saveValue(&store.play_mode, store.play_mode, true, true);
-  _SDplaylistFS = getMode()==PM_SDCARD?&sdman:(true?&SPIFFS:_SDplaylistFS);
+  _SDplaylistFS = getMode()==PM_SDCARD?&sdman:(true?&LittleFS:_SDplaylistFS);
   if(getMode()==PM_SDCARD){
     if(pir) player.sendCommand({PR_STOP, 0});
     display.putRequest(NEWMODE, SDCHANGE);
@@ -198,10 +197,10 @@ void Config::initSDPlaylist() {
 #endif //#ifdef USE_SD
 
 bool Config::spiffsCleanup(){
-  bool ret = (SPIFFS.exists(PLAYLIST_SD_PATH)) || (SPIFFS.exists(INDEX_SD_PATH)) || (SPIFFS.exists(INDEX_PATH));
-  if(SPIFFS.exists(PLAYLIST_SD_PATH)) SPIFFS.remove(PLAYLIST_SD_PATH);
-  if(SPIFFS.exists(INDEX_SD_PATH)) SPIFFS.remove(INDEX_SD_PATH);
-  if(SPIFFS.exists(INDEX_PATH)) SPIFFS.remove(INDEX_PATH);
+  bool ret = (LittleFS.exists(PLAYLIST_SD_PATH)) || (LittleFS.exists(INDEX_SD_PATH)) || (LittleFS.exists(INDEX_PATH));
+  if(LittleFS.exists(PLAYLIST_SD_PATH)) LittleFS.remove(PLAYLIST_SD_PATH);
+  if(LittleFS.exists(INDEX_SD_PATH)) LittleFS.remove(INDEX_SD_PATH);
+  if(LittleFS.exists(INDEX_PATH)) LittleFS.remove(INDEX_PATH);
   return ret;
 }
 
@@ -543,13 +542,13 @@ void Config::setStation(const char* station) {
 }
 
 void Config::indexPlaylist() {
-  File playlist = SPIFFS.open(PLAYLIST_PATH, "r");
+  File playlist = LittleFS.open(PLAYLIST_PATH, "r");
   if (!playlist) {
     return;
   }
   char sName[BUFLEN], sUrl[BUFLEN];
   int sOvol;
-  File index = SPIFFS.open(INDEX_PATH, "w");
+  File index = LittleFS.open(INDEX_PATH, "w");
   while (playlist.available()) {
     uint32_t pos = playlist.position();
     if (parseCSV(playlist.readStringUntil('\n').c_str(), sName, sUrl, sOvol)) {
@@ -562,10 +561,10 @@ void Config::indexPlaylist() {
 
 void Config::initPlaylist() {
   //store.countStation = 0;
-  if (!SPIFFS.exists(INDEX_PATH)) indexPlaylist();
+  if (!LittleFS.exists(INDEX_PATH)) indexPlaylist();
 
-  /*if (SPIFFS.exists(INDEX_PATH)) {
-    File index = SPIFFS.open(INDEX_PATH, "r");
+  /*if (LittleFS.exists(INDEX_PATH)) {
+    File index = LittleFS.open(INDEX_PATH, "r");
     store.countStation = index.size() / 4;
     index.close();
     saveValue(&store.countStation, store.countStation, true, true);
@@ -1047,7 +1046,7 @@ bool Config::parseSsid(const char* line, char* ssid, char* pass) {
 }
 
 bool Config::saveWifiFromNextion(const char* post){
-  File file = SPIFFS.open(SSIDS_PATH, "w");
+  File file = LittleFS.open(SSIDS_PATH, "w");
   if (!file) {
     return false;
   } else {
@@ -1059,15 +1058,15 @@ bool Config::saveWifiFromNextion(const char* post){
 }
 
 bool Config::saveWifi() {
-  if (!SPIFFS.exists(TMP_PATH)) return false;
-  SPIFFS.remove(SSIDS_PATH);
-  SPIFFS.rename(TMP_PATH, SSIDS_PATH);
+  if (!LittleFS.exists(TMP_PATH)) return false;
+  LittleFS.remove(SSIDS_PATH);
+  LittleFS.rename(TMP_PATH, SSIDS_PATH);
   ESP.restart();
   return true;
 }
 
 bool Config::initNetwork() {
-  File file = SPIFFS.open(SSIDS_PATH, "r");
+  File file = LittleFS.open(SSIDS_PATH, "r");
   if (!file || file.isDirectory()) {
     return false;
   }
@@ -1165,8 +1164,8 @@ void Config::sleepForAfter(uint16_t sf, uint16_t sa){
 
 void cleanStaleSearchResults() {
   const char* metaPath = "/data/searchresults.json.meta";
-  if (SPIFFS.exists(metaPath)) {
-    File metaFile = SPIFFS.open(metaPath, "r");
+  if (LittleFS.exists(metaPath)) {
+    File metaFile = LittleFS.open(metaPath, "r");
     metaFile.readStringUntil('\n'); // 1st line query
     String timeStr = metaFile.readStringUntil('\n'); //2nd line is time
     metaFile.close();
@@ -1175,9 +1174,9 @@ void cleanStaleSearchResults() {
       time_t now = time(nullptr);
       if (now < 100000000 || (now - fileTime) > 86400) {
         Serial.print("Cleaning stale search results.\n");
-        SPIFFS.remove(metaPath);
-        SPIFFS.remove("/data/searchresults.json");
-        SPIFFS.remove("/data/search.txt");
+        LittleFS.remove(metaPath);
+        LittleFS.remove("/data/searchresults.json");
+        LittleFS.remove("/data/search.txt");
       }
     }
   }
@@ -1185,8 +1184,8 @@ void cleanStaleSearchResults() {
 
 void fixPlaylistFileEnding() {
   const char* playlistPath = PLAYLIST_PATH;
-  if (!SPIFFS.exists(playlistPath)) return;
-  File playlistfile = SPIFFS.open(playlistPath, "r+");
+  if (!LittleFS.exists(playlistPath)) return;
+  File playlistfile = LittleFS.open(playlistPath, "r+");
   if (!playlistfile) return;
   size_t sz = playlistfile.size();
   if (sz < 2) { playlistfile.close(); return; }
@@ -1233,7 +1232,7 @@ void updateFile(void* param, const char* localFile, const char* onlineFile, cons
       updateFile(param, localPath, remoteUrl, "", fname);
     }
     // Delete any files in /www that are not in the requiredFiles list
-    File root = SPIFFS.open("/www");
+    File root = LittleFS.open("/www");
     if (root && root.isDirectory()) {
       File file = root.openNextFile();
       while (file) {
@@ -1251,7 +1250,7 @@ void updateFile(void* param, const char* localFile, const char* onlineFile, cons
         }
         if (!found) {
           Serial.printf("[File: /www/%s] Deleting - not in required file list.\n", path);
-          SPIFFS.remove(path);
+          LittleFS.remove(path);
         }
         file = root.openNextFile();
       }
@@ -1263,9 +1262,9 @@ void startAsyncServices(void* param){
   fixPlaylistFileEnding();
   // if the OTA marker file exists, fetch all web assets immediately, clean up, restart
  #ifdef UPDATEURL
-    if (SPIFFS.exists(ONLINEUPDATE_MARKERFILE)) {
+    if (LittleFS.exists(ONLINEUPDATE_MARKERFILE)) {
       getRequiredFiles(param);
-      SPIFFS.remove(ONLINEUPDATE_MARKERFILE);
+      LittleFS.remove(ONLINEUPDATE_MARKERFILE);
       delay(200);
       ESP.restart();
     }
@@ -1279,7 +1278,7 @@ void startAsyncServices(void* param){
 void Config::startAsyncServicesButWait() {
   if (WiFi.status() != WL_CONNECTED) return;
   ESPFileUpdater* updater = nullptr;
-  updater = new ESPFileUpdater(SPIFFS);
+  updater = new ESPFileUpdater(LittleFS);
   updater->setMaxSize(1024);
   updater->setUserAgent(ESPFILEUPDATER_USERAGENT);
   xTaskCreate(startAsyncServices, "startAsyncServices", 8192, updater, 2, NULL);

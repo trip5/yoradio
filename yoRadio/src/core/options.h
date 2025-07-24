@@ -146,6 +146,7 @@ The connection tables are located here https://github.com/e2002/yoradio#connecti
   #define ENC_HALFQUARD         false
 #endif
 
+
 #ifndef ENC2_BTNL
   #define ENC2_BTNL              255
 #endif

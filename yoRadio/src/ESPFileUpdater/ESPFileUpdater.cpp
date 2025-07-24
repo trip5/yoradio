@@ -2,7 +2,7 @@
 
 #include "ESPFileUpdater.h"
 #include <time.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <Arduino.h>
 #include <lwip/sockets.h>
 #include <lwip/netdb.h>

@@ -88,10 +88,10 @@ bool CommandHandler::exec(const char *command, const char *value, uint8_t cid) {
   if (strEquals(command, "snuffle")) { config.setSnuffle(strcmp(value, "true") == 0); return true; }
   if (strEquals(command, "balance")) { config.setBalance(static_cast<uint8_t>(atoi(value))); return true; }
   if (strEquals(command, "reboot"))  { ESP.restart(); return true; }
-  if (strEquals(command, "format"))  { player.sendCommand({PR_STOP, 0}); SPIFFS.format();
+  if (strEquals(command, "format"))  { player.sendCommand({PR_STOP, 0}); LittleFS.format();
     #ifdef UPDATEURL
       delay(250);
-      File markerFile = SPIFFS.open(ONLINEUPDATE_MARKERFILE, "w"); if (markerFile) markerFile.close();
+      File markerFile = LittleFS.open(ONLINEUPDATE_MARKERFILE, "w"); if (markerFile) markerFile.close();
       delay(250);
     #endif
     ESP.restart(); return true; }

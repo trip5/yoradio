@@ -1,5 +1,4 @@
 #include "netserver.h"
-#include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include "../ESPFileUpdater/ESPFileUpdater.h"
 #include "config.h"
@@ -54,6 +53,7 @@ void handleNotFound(AsyncWebServerRequest * request);
 void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 void vTaskSearchRadioBrowser(void *pvParameters);
 void handleSearchPost(AsyncWebServerRequest *request);
+void send_playlist(AsyncWebServerRequest * request);
 #ifdef UPDATEURL
 void checkForOnlineUpdate();
 void startOnlineUpdate();
@@ -146,7 +146,7 @@ void handleSearchPost(AsyncWebServerRequest *request) {
       player.sendCommand({PR_PLAY, (uint16_t)foundIdx});
       request->send(200, "text/plain", "DUPLICATE");
     } else { // add it and play it
-      File playlistfile = SPIFFS.open(PLAYLIST_PATH, "a");
+      File playlistfile = LittleFS.open(PLAYLIST_PATH, "a");
       if (playlistfile) {
         playlistfile.printf("%s\t%s\t%d\r\n", sName.c_str(), sUrl.c_str(), sOvol);
         playlistfile.close();
@@ -174,11 +174,17 @@ bool NetServer::begin(bool quiet) {
   webserver.on("/", HTTP_ANY, handleIndex);
   webserver.on("/search", HTTP_GET, handleSearch);
   webserver.on("/search", HTTP_POST, handleSearchPost);
-  webserver.onNotFound(handleNotFound);
+  // playlist serve
+  webserver.on(PLAYLIST_PATH, HTTP_GET, send_playlist);  webserver.onNotFound(handleNotFound);
   webserver.onFileUpload(handleUpload);
 
-  webserver.serveStatic("/", SPIFFS, "/www/").setCacheControl("max-age=3600");
-#ifdef CORS_DEBUG
+// server file content from filesystem
+  webserver.serveStatic("/", LittleFS, "/www/")
+    .setCacheControl(asyncsrv::T_no_cache);     // revalidate based on etag/IMS headers
+  webserver.serveStatic("/data", LittleFS, "/data/")
+    .setCacheControl(asyncsrv::T_no_cache);     // revalidate based on etag/IMS headers
+
+    #ifdef CORS_DEBUG
   DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Origin"), F("*"));
   DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Headers"), F("content-type"));
 #endif
@@ -232,7 +238,7 @@ size_t NetServer::chunkedHtmlPageCallback(uint8_t* buffer, size_t maxLen, size_t
   if(sdpl){
     requiredfile = config.SDPLFS()->open(netserver.chunkedPathBuffer, "r");
   }else{
-    requiredfile = SPIFFS.open(netserver.chunkedPathBuffer, "r");
+    requiredfile = LittleFS.open(netserver.chunkedPathBuffer, "r");
   }
   if (!requiredfile) return 0;
   size_t filesize = requiredfile.size();
@@ -522,7 +528,7 @@ int NetServer::_readPlaylistLine(File &file, char * line, size_t size){
 
 bool NetServer::importPlaylist() {
   if(config.getMode()==PM_SDCARD) return false;
-  File tempfile = SPIFFS.open(TMP_PATH, "r");
+  File tempfile = LittleFS.open(TMP_PATH, "r");
   if (!tempfile) {
     return false;
   }
@@ -541,7 +547,7 @@ bool NetServer::importPlaylist() {
   // Detect minified JSON array (single line, starts with [)
   bool isJsonArray = firstLine.startsWith("[");
   bool foundAny = false;
-  File playlistfile = SPIFFS.open(TMP2_PATH, "w");
+  File playlistfile = LittleFS.open(TMP2_PATH, "w");
   if (isJsonArray) {
     // Read the whole file into a String
     String jsonStr;
@@ -610,13 +616,13 @@ bool NetServer::importPlaylist() {
   playlistfile.close();
   tempfile.close();
   if (foundAny) {
-    SPIFFS.remove(PLAYLIST_PATH);
-    SPIFFS.rename(TMP2_PATH, PLAYLIST_PATH);
+    LittleFS.remove(PLAYLIST_PATH);
+    LittleFS.rename(TMP2_PATH, PLAYLIST_PATH);
     requestOnChange(PLAYLISTSAVED, 0);
     return true;
   }
-  SPIFFS.remove(TMP_PATH);
-  SPIFFS.remove(TMP2_PATH);
+  LittleFS.remove(TMP_PATH);
+  LittleFS.remove(TMP2_PATH);
   return false;
 }
 
@@ -637,13 +643,13 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
   if(request->url()=="/upload"){
     if (!index) {
       if(filename!="tempwifi.csv"){
-        if(SPIFFS.exists(PLAYLIST_PATH)) SPIFFS.remove(PLAYLIST_PATH);
-        if(SPIFFS.exists(INDEX_PATH)) SPIFFS.remove(PLAYLIST_PATH);
-        if(SPIFFS.exists(PLAYLIST_SD_PATH)) SPIFFS.remove(PLAYLIST_SD_PATH);
-        if(SPIFFS.exists(INDEX_SD_PATH)) SPIFFS.remove(INDEX_SD_PATH);
+        if(LittleFS.exists(PLAYLIST_PATH)) LittleFS.remove(PLAYLIST_PATH);
+        if(LittleFS.exists(INDEX_PATH)) LittleFS.remove(PLAYLIST_PATH);
+        if(LittleFS.exists(PLAYLIST_SD_PATH)) LittleFS.remove(PLAYLIST_SD_PATH);
+        if(LittleFS.exists(INDEX_SD_PATH)) LittleFS.remove(INDEX_SD_PATH);
       }
-      freeSpace = (float)SPIFFS.totalBytes()/100*68-SPIFFS.usedBytes();
-      request->_tempFile = SPIFFS.open(TMP_PATH , "w");
+      freeSpace = (float)LittleFS.totalBytes()/100*68-LittleFS.usedBytes();
+      request->_tempFile = LittleFS.open(TMP_PATH , "w");
     }
     if (len) {
       if(freeSpace>index+len){
@@ -683,7 +689,7 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
     if (!index) {
       String spath = "/www/";
       if(filename=="playlist.csv" || filename=="wifi.csv") spath = "/data/";
-      request->_tempFile = SPIFFS.open(spath + filename , "w");
+      request->_tempFile = LittleFS.open(spath + filename , "w");
     }
     if (len) {
       request->_tempFile.write(data, len);
@@ -706,11 +712,27 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
   }
 }
 
+void send_playlist(AsyncWebServerRequest * request){
+#ifdef MQTT_ROOT_TOPIC    // very ugly check
+  // if MQTT something is in progress, ask client to return later
+  if (mqttplaylistblock){
+    AsyncWebServerResponse *response = request->beginResponse(429);
+    response->addHeader(asyncsrv::T_retry_after, 1);
+    return request->send(response);
+  }
+#endif
+  if (config.getMode()==PM_SDCARD)    // redirect to SDCARD's path
+    return request->redirect(PLAYLIST_SD_PATH);
+
+  // last resort - send playlist from LittleFS
+  request->send(LittleFS, request->url().c_str(), asyncsrv::T_text_plain);
+}
+
 // Helper to select and randomize radio-browser servers
 void selectRadioBrowserServer() {
   size_t arr_size = sizeof(g_ipv4_servers) / sizeof(g_ipv4_servers[0]);
   for (size_t i = 0; i < arr_size; ++i) g_ipv4_servers[i] = "";
-  File serversFile = SPIFFS.open("/www/rb_srvrs.json", "r");
+  File serversFile = LittleFS.open("/www/rb_srvrs.json", "r");
   if (!serversFile) {
     Serial.println("[Search] [Error] Failed to open /www/rb_srvrs.json - will try to get IP of all.api.radio-browser.info instead.");
     goto useIP;
@@ -771,11 +793,11 @@ useIP:
 void vTaskSearchRadioBrowser(void *pvParameters) {
   char* search_str = (char*)pvParameters;
   Serial.printf("[Search] Starting radio browser search. Search: %s\n", search_str);
-  SPIFFS.remove("/www/searchresults.json");
-  // Check SPIFFS free space
-  size_t freeSpace = SPIFFS.totalBytes() - SPIFFS.usedBytes();
+  LittleFS.remove("/www/searchresults.json");
+  // Check LittleFS free space
+  size_t freeSpace = LittleFS.totalBytes() - LittleFS.usedBytes();
   if (freeSpace < (FS_REQUIRED_FREE_SPACE * 1024)) {
-    Serial.printf("[Search] [Error] Not enough free SPIFFS space: %u bytes. Aborting.\n", freeSpace);
+    Serial.printf("[Search] [Error] Not enough free LittleFS space: %u bytes. Aborting.\n", freeSpace);
     netserver.requestOnChange(SEARCH_FAILED, 0);
     delete[] search_str;
     g_searchTaskHandle = NULL;
@@ -807,7 +829,7 @@ void vTaskSearchRadioBrowser(void *pvParameters) {
     vTaskDelete(NULL);
     return;
   }
-  ESPFileUpdater searchResultsFetch(SPIFFS);
+  ESPFileUpdater searchResultsFetch(LittleFS);
   searchResultsFetch.setUserAgent(ESPFILEUPDATER_USERAGENT);
   const char* localPath = "/www/searchresults.json";
   bool success = false;
@@ -823,7 +845,7 @@ void vTaskSearchRadioBrowser(void *pvParameters) {
     if (status == ESPFileUpdater::UPDATED) {
       Serial.printf("[Search] Successfully downloaded from %s\n", server.c_str());
       // Check if the downloaded file ends with ']'
-      File jsonFile = SPIFFS.open(localPath, "r");
+      File jsonFile = LittleFS.open(localPath, "r");
       if (jsonFile) {
         int fileSize = jsonFile.size();
         char lastChar = 0;
@@ -864,7 +886,7 @@ void vTaskSearchRadioBrowser(void *pvParameters) {
       }
       if (json_valid) {
         // Write /www/search.txt with the actual search string (single line)
-        File file = SPIFFS.open("/www/search.txt", "w");
+        File file = LittleFS.open("/www/search.txt", "w");
         if (file) {
           file.printf("%s\n", search_str);
           file.close();
@@ -1024,7 +1046,7 @@ void launchPlaybackTask(const String& url, const String& name) {
           bool ended = Update.end();
           Serial.printf("[Online Update] Written %u bytes, expected %d, end() returned %s\n", written, contentLength, ended?"true":"false");
           if (written == contentLength && ended) {
-            File markerFile = SPIFFS.open(ONLINEUPDATE_MARKERFILE, "w");
+            File markerFile = LittleFS.open(ONLINEUPDATE_MARKERFILE, "w");
             if (markerFile) markerFile.close();
             websocket.textAll("{\"onlineupdatestatus\": \"Update successful, rebooting...\"}");
             delay(1000);
@@ -1056,7 +1078,9 @@ void handleNotFound(AsyncWebServerRequest * request) {
       return request->requestAuthentication();
     }
 #endif
-  if(request->url()=="/emergency") { request->send_P(200, "text/html", emergency_form); return; }
+  // emergency static page
+  if(request->url()=="/emergency") { request->send(200, "text/html", emergency_form); return; }
+  // redirect to root page if posting to /webboard on empty FS
   if(request->method() == HTTP_POST && request->url()=="/webboard" && config.emptyFS) { request->redirect("/"); ESP.restart(); return; }
   if(request->method() == HTTP_GET && request->url() == "/search") { handleSearch(request); return; }
   if (request->method() == HTTP_POST && request->url() == "/search") { handleSearchPost(request); return; }
@@ -1071,26 +1095,6 @@ void handleNotFound(AsyncWebServerRequest * request) {
       request->send(200, "text/plain", "Update started"); return;
     }
   #endif
-
-  if (request->method() == HTTP_GET) {
-    DBGVB("[%s] client ip=%s request of %s", __func__, request->client()->remoteIP().toString().c_str(), request->url().c_str());
-    if (strcmp(request->url().c_str(), PLAYLIST_PATH) == 0 || 
-        strcmp(request->url().c_str(), SSIDS_PATH) == 0 || 
-        strcmp(request->url().c_str(), INDEX_PATH) == 0 || 
-        strcmp(request->url().c_str(), TMP_PATH) == 0 || 
-        strcmp(request->url().c_str(), PLAYLIST_SD_PATH) == 0 || 
-        strcmp(request->url().c_str(), INDEX_SD_PATH) == 0) {
-#ifdef MQTT_ROOT_TOPIC
-      if (strcmp(request->url().c_str(), PLAYLIST_PATH) == 0) while (mqttplaylistblock) vTaskDelay(5);
-#endif
-      if(strcmp(request->url().c_str(), PLAYLIST_PATH) == 0 && config.getMode()==PM_SDCARD){
-        netserver.chunkedHtmlPage("application/octet-stream", request, PLAYLIST_SD_PATH);
-      }else{
-        netserver.chunkedHtmlPage("application/octet-stream", request, request->url().c_str());
-      }
-      return;
-    }// if (strcmp(request->url().c_str(), PLAYLIST_PATH) == 0 || 
-  }// if (request->method() == HTTP_GET)
   
   if (request->method() == HTTP_POST) {
     if(request->url()=="/webboard"){ request->redirect("/"); return; } // <--post files from /data/www
@@ -1141,11 +1145,11 @@ void handleNotFound(AsyncWebServerRequest * request) {
     return;
   }
   if (strcmp(request->url().c_str(), "/settings.html") == 0 || strcmp(request->url().c_str(), "/update.html") == 0 || strcmp(request->url().c_str(), "/ir.html") == 0){
-    request->send_P(200, "text/html", index_html);
+    request->send(200, "text/html", index_html);
     return;
   }
   if (request->method() == HTTP_GET && request->url() == "/webboard") {
-    request->send_P(200, "text/html", emptyfs_html);
+    request->send(200, "text/html", emptyfs_html);
     return;
   }
   Serial.print("Not Found: ");
@@ -1155,7 +1159,7 @@ void handleNotFound(AsyncWebServerRequest * request) {
 
 void handleIndex(AsyncWebServerRequest * request) {
   if(config.emptyFS){
-    if(request->url()=="/" && request->method() == HTTP_GET ) { request->send_P(200, "text/html", emptyfs_html); return; }
+    if(request->url()=="/" && request->method() == HTTP_GET ) { request->send(200, "text/html", emptyfs_html); return; }
     if(request->url()=="/" && request->method() == HTTP_POST) {
       if(request->arg("ssid")!="" && request->arg("pass")!=""){
         char buf[BUFLEN];
@@ -1181,13 +1185,13 @@ void handleIndex(AsyncWebServerRequest * request) {
     }
 #endif
   if (strcmp(request->url().c_str(), "/") == 0 && request->params() == 0) {
-    if(network.status == CONNECTED) request->send_P(200, "text/html", index_html); else request->redirect("/settings.html");
+    if(network.status == CONNECTED) request->send(200, "text/html", index_html); else request->redirect("/settings.html");
     return;
   }
   if(network.status == CONNECTED){
     int paramsNr = request->params();
     if(paramsNr==1){
-      AsyncWebParameter* p = request->getParam(0);
+      const AsyncWebParameter* p = request->getParam(0);
       if(cmd.exec(p->name().c_str(),p->value().c_str())) {
         if(p->name()=="reset" || p->name()=="clearspiffs") request->redirect("/");
         if(p->name()=="clearspiffs") { delay(100); ESP.restart(); }
