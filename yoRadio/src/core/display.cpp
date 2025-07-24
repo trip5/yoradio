@@ -27,8 +27,11 @@ Page *pages[] = { new Page(), new Page(), new Page(), new Page() };
   #define CORE_STACK_SIZE  1024*3
 #endif
 #ifndef DSP_TASK_DELAY
-  #define DSP_TASK_DELAY  pdMS_TO_TICKS(10)
+  #define DSP_TASK_DELAY  pdMS_TO_TICKS(20)   // cap for 50 fps
 #endif
+// will use DSP_QUEUE_TICKS as delay interval for display task runner when there are no msgs in a queue to process
+#define DSP_QUEUE_TICKS DSP_TASK_DELAY
+
 #if !((DSP_MODEL==DSP_ST7735 && DTYPE==INITR_BLACKTAB) || DSP_MODEL==DSP_ST7789 || DSP_MODEL==DSP_ST7796 || DSP_MODEL==DSP_ILI9488 || DSP_MODEL==DSP_ILI9486 || DSP_MODEL==DSP_ILI9341 || DSP_MODEL==DSP_ILI9225)
   #undef  BITRATE_FULL
   #define BITRATE_FULL     false
@@ -48,7 +51,8 @@ void loopDspTask(void * pvParameters){
   while(true){
     if(displayQueue==NULL) break;
     display.loop();
-    vTaskDelay(DSP_TASK_DELAY);
+    // will NOT delay here, would use message dequeue timeout instead
+    //vTaskDelay(DSP_TASK_DELAY);
   }
   vTaskDelete( NULL );
   DspTask=NULL;
@@ -390,11 +394,7 @@ void Display::loop() {
     _bootScreen();
     return;
   }
-  if(displayQueue==NULL) return;
-  _pager.loop();
-#ifdef USE_NEXTION
-  nextion.loop();
-#endif
+
   requestParams_t request;
   if(xQueueReceive(displayQueue, &request, DSP_QUEUE_TICKS)){
     bool pm_result = true;
@@ -476,11 +476,21 @@ void Display::loop() {
         }
         default: break;
       }
+
+    // check if there are more messages waiting in the Q, in this case break the loop() and go
+    // for another round to evict next message, do not waste time to redraw the screen, etc...
+    if (uxQueueMessagesWaiting(displayQueue))
+      return;
   }
+
+  _pager.loop();
+#ifdef USE_NEXTION
+  nextion.loop();
+#endif
   dsp.loop();
-  #if I2S_DOUT==255
+#if I2S_DOUT==255
   player.computeVUlevel();
-  #endif
+#endif
 }
 
 void Display::_setRSSI(int rssi) {
