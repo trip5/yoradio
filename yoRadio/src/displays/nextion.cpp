@@ -252,21 +252,13 @@ void Nextion::loop() {
         /*
         if (sscanf(rxbuf, "tzhour=%d", &scanDigit) == 1){
           config.setTimezone((int8_t)scanDigit, config.store.tzMin);
-          if(strlen(config.store.sntp1)>0 && strlen(config.store.sntp2)>0){
-            configTime(config.store.tzHour * 3600 + config.store.tzMin * 60, config.getTimezoneOffset(), config.store.sntp1, config.store.sntp2);
-          }else if(strlen(config.store.sntp1)>0){
-            configTime(config.store.tzHour * 3600 + config.store.tzMin * 60, config.getTimezoneOffset(), config.store.sntp1);
-          }
-          network.forceTimeSync = true;
+          config.setTimeConf();
+          timekeeper.forceTimeSync = true;
         }
         if (sscanf(rxbuf, "tzmin=%d", &scanDigit) == 1){
           config.setTimezone(config.store.tzHour, (int8_t)scanDigit);
-          if(strlen(config.store.sntp1)>0 && strlen(config.store.sntp2)>0){
-            configTime(config.store.tzHour * 3600 + config.store.tzMin * 60, config.getTimezoneOffset(), config.store.sntp1, config.store.sntp2);
-          }else if(strlen(config.store.sntp1)>0){
-            configTime(config.store.tzHour * 3600 + config.store.tzMin * 60, config.getTimezoneOffset(), config.store.sntp1);
-          }
-          network.forceTimeSync = true;
+          config.setTimeConf();
+          timekeeper.forceTimeSync = true;
         }
         */
         if (sscanf(rxbuf, "audioinfo=%d", &scanDigit) == 1){

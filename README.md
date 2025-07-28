@@ -235,6 +235,15 @@ Work is in progress...
 ---
 ## Version history
 
+### 0.9.550 Trip5/2025.07.28
+
+- Trip5's changes merged with 0.9.550
+
+### 0.9.550
+
+- MQTT changes
+- timekeeper (most time functions moved)
+
 ### 0.9.533 Trip5/2025.07.23
 
 - minor additions to UI / display options

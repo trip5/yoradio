@@ -1,13 +1,36 @@
 Tag your local most recent commit and push it to Github:
-git tag 2025.07.20
-git push origin 2025.07.20
+git tag 2025.07.28
+git push origin 2025.07.28
 
 Re-doing a tagged release:
-git tag -d 2025.07.20
-git tag -a 2025.07.20 -m "2025.07.20"
-git push origin 2025.07.20 --force
+git tag -d 2025.07.28
+git tag -a 2025.07.28 -m "2025.07.28"
+git push origin 2025.07.28 --force
 
 A good theme maker? https://andrasdaradici.itch.io/
+
+---
+
+How I keep my files up-to-date with e2002's repo:
+
+Download the latest version of e2002/yoRadio as a zip.
+Extract that zip to a folder and indicate it clearly in the foldername.
+Make sure the yoRadio folder is on your own (trip5/yoRadio/trip5)
+Open it in VSCode if needed and switch to branch trip5.
+In both folders, extract the .gz files in /data/www
+Open the extracted folder (from e2002) with VSCode.
+Use extension: Compare Folders and compare with yoRadio/
+
+You should also view exact changes that were made by e2002 in Github
+View https://github.com/trip5/yoradio/tree/main and click "1 commit behind"
+https://github.com/trip5/yoradio/compare/main...e2002%3Ayoradio%3Amain
+
+That's it!  Now go file by file...
+You may need to copy certain files over if they are missing completely
+(These will show up as "Only in My Folder")
+
+---
+
 
 
 DONE:
@@ -19,6 +42,10 @@ DOING:
 
 
 NEXT:
+
+The www files look nasty on mobile devices (Except search)
+
+
 
 Add to Radio-Browser click counter:
 
