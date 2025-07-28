@@ -13,6 +13,8 @@ A good theme maker? https://andrasdaradici.itch.io/
 
 How I keep my files up-to-date with e2002's repo:
 
+This is getting difficult to upkeep...
+
 Download the latest version of e2002/yoRadio as a zip.
 Extract that zip to a folder and indicate it clearly in the foldername.
 Make sure the yoRadio folder is on your own (trip5/yoRadio/trip5)
