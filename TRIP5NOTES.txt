@@ -1,6 +1,6 @@
 Tag your local most recent commit and push it to Github:
-git tag 2025.07.28
-git push origin 2025.07.28
+git tag 2025.08.07
+git push origin 2025.08.07
 
 Re-doing a tagged release:
 git tag -d 2025.07.28

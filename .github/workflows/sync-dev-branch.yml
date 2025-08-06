@@ -18,12 +18,12 @@ jobs:
 
       - name: Create or update dev branch
         run: |
-          # Create dev branch if it doesn't exist
-          git checkout -B dev
+          # Start from upstream-synced main branch
+          git checkout -B dev main
 
-          # Reset to trip5 branch
-          git reset --hard trip5
-
+          # Apply changes from trip5 branch (excluding config files)
+          git checkout trip5 -- .
+          
           # Remove the configuration files that shouldn't be in PRs
           git rm -f yoRadio/mytheme.h yoRadio/myoptions.h platformio.ini TRIP5NOTES.txt || true
           
@@ -32,7 +32,7 @@ jobs:
 
           # Commit the changes
           git add -A
-          git commit -m "Sync dev branch (exclude config files)" || echo "No changes to commit"
+          git commit -m "Apply Trip5 changes (exclude config files)" || echo "No changes to commit"
 
           # Push to dev branch
           git push origin dev --force
