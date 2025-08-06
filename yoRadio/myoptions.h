@@ -17,7 +17,7 @@
 /* --- UPDATE FILES --- */
 
 #define UPDATEURL "https://github.com/trip5/yoradio/releases/latest/download/" // + FIRMWARE for the file
-#define FILESURL "https://github.com/trip5/yoradio/releases/download/2025.07.28/" // + FILE for SPIFFS files (this version)
+#define FILESURL "https://github.com/trip5/yoradio/releases/download/2025.08.07/" // + FILE for SPIFFS files (this version)
 #define CHECKUPDATEURL "https://github.com/trip5/yoradio/releases/latest/download/version.txt" // automatically extracted from options.h during Github workflow
 #define VERSIONSTRING "#define YOVERSION" // the file above should have a line that contains this followed by a version number
 

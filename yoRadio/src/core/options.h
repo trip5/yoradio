@@ -1,7 +1,7 @@
 #ifndef options_h
 #define options_h
 
-#define YOVERSION "0.9.552 Trip5/2025.07.28"
+#define YOVERSION "0.9.574 Trip5/2025.08.07"
 #define YOURL "https://github.com/trip5/yoradio" // used by the ESPFileUpdater in BrowserClient
 
 /*******************************************************
@@ -51,6 +51,7 @@ The connection tables are located here https://github.com/e2002/yoradio#connecti
 #define DSP_ILI9486     22    // (Testing mode) 480x320  3.5'  https://aliexpress.com/item/1005001999296476.html?sku_id=12000018365356568
 #define DSP_SSD1322     23    // 256x64   2.8'  https://aliexpress.com/item/1005003480981568.html
 #define DSP_ST7920      24    // 128x64   2.6'  https://aliexpress.com/item/32699482638.html
+#define DSP_ST7789_76   25    // 284x76   2.25' https://aliexpress.ru/item/1005009016973081.html
 #define DSP_CUSTOM      101   // your display
 
 #ifndef DSP_MODEL

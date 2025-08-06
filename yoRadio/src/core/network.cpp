@@ -7,6 +7,7 @@
 #include "player.h"
 #include "mqtt.h"
 #include "timekeeper.h"
+#include <ESPmDNS.h>
 
 #ifndef WIFI_ATTEMPTS
   #define WIFI_ATTEMPTS  16
@@ -153,12 +154,9 @@ void MyNetwork::setWifiParams(){
   WiFi.setSleep(false);
   WiFi.onEvent(WiFiReconnected, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
   WiFi.onEvent(WiFiLostConnection, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
-  weatherBuf=NULL;
-  #if (DSP_MODEL!=DSP_DUMMY || defined(USE_NEXTION)) && !defined(HIDE_WEATHER)
-    weatherBuf = (char *) malloc(sizeof(char) * WEATHER_STRING_L);
-    memset(weatherBuf, 0, WEATHER_STRING_L);
-  #endif
   //config.setTimeConf(); //??
+  if(strlen(config.store.mdnsname)>0)
+    MDNS.begin(config.store.mdnsname);
 }
 
 void MyNetwork::requestTimeSync(bool withTelnetOutput, uint8_t clientId) {

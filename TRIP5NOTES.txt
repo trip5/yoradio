@@ -17,15 +17,18 @@ This is getting difficult to upkeep...
 
 Download the latest version of e2002/yoRadio as a zip.
 Extract that zip to a folder and indicate it clearly in the foldername.
-Make sure the yoRadio folder is on your own (trip5/yoRadio/trip5)
+Make sure the yoRadio folder is on your own repository (trip5/yoRadio/trip5)
 Open it in VSCode if needed and switch to branch trip5.
-In both folders, extract the .gz files in /data/www
+In both folders, extract the .gz files in /data/www (if changed)
 Open the extracted folder (from e2002) with VSCode.
 Use extension: Compare Folders and compare with yoRadio/
 
 You should also view exact changes that were made by e2002 in Github
 View https://github.com/trip5/yoradio/tree/main and click "1 commit behind"
 https://github.com/trip5/yoradio/compare/main...e2002%3Ayoradio%3Amain
+
+If there are new files to add, they will appear as "Only In My Folder"
+- copy these from the extracted ZIP folder...
 
 That's it!  Now go file by file...
 You may need to copy certain files over if they are missing completely
