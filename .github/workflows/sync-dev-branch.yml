@@ -18,7 +18,7 @@ jobs:
 
       - name: Create or update dev branch
         run: |
-          # Start from upstream-synced main branch
+          # Start dev branch from upstream-synced main branch
           git checkout -B dev main
 
           # Apply changes from trip5 branch (excluding config files)
