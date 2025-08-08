@@ -1287,7 +1287,7 @@ void Config::startAsyncServicesButWait() {
 
 void Config::bootInfo() {
   BOOTLOG("************************************************");
-  BOOTLOG("*               ёRadio v%s v%s                *", YOVERSION);
+  BOOTLOG("*               ehRadio %s             *", RADIOVERSION);
   BOOTLOG("************************************************");
   BOOTLOG("------------------------------------------------");
   BOOTLOG("arduino:\t%d", ARDUINO);

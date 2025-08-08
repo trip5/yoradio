@@ -9,16 +9,20 @@ git push origin 2025.07.20 --force
 
 A good theme maker? https://andrasdaradici.itch.io/
 
-
 DONE:
 
-
+Graphics on Boot screens updated
 
 DOING:
 
+WebUI Graphics
 
 
 NEXT:
+
+WebUI fixes
+
+NEXT BIG ADD:
 
 Add to Radio-Browser click counter:
 

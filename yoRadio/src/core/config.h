@@ -15,7 +15,7 @@
   #define BUFLEN            250
 #endif
 
-#define ESPFILEUPDATER_USERAGENT "yoRadio/" YOVERSION "(" YOURL ")"  // used as a user-agent string for downloading with ESPFileUpdater
+#define ESPFILEUPDATER_USERAGENT "ehradio/" RADIOVERSION "(" GITHUBURL ")"  // used as a user-agent string for downloading with ESPFileUpdater
 #ifdef ESPFILEUPDATER_DEBUG
   #define ESPFILEUPDATER_VERBOSE true
 #else

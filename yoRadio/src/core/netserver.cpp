@@ -339,7 +339,7 @@ void NetServer::processQueue(){
           sprintf (wsbuf, "{\"act\":[%s]}", act.c_str());
           break;
         }
-      //case STARTUP:       sprintf (wsbuf, "{\"command\":\"startup\", \"payload\": {\"mode\":\"%s\", \"version\":\"%s\"}}", network.status == CONNECTED ? "player" : "ap", YOVERSION); break;
+      //case STARTUP:       sprintf (wsbuf, "{\"command\":\"startup\", \"payload\": {\"mode\":\"%s\", \"version\":\"%s\"}}", network.status == CONNECTED ? "player" : "ap", RADIOVERSION); break;
       case GETINDEX:      {
           requestOnChange(STATION, clientId); 
           requestOnChange(TITLE, clientId); 
@@ -964,11 +964,11 @@ void launchPlaybackTask(const String& url, const String& name) {
       }
       http.end();
       if (remoteVer.length() == 0) {
-        websocket.textAll("{\"onlineupdateerror\": \"Remote YOVERSION not found\"}");
+        websocket.textAll("{\"onlineupdateerror\": \"Remote RADIOVERSION not found\"}");
         return;
       }
       char msgBuf[128];
-      if (remoteVer != String(YOVERSION)) {
+      if (remoteVer != String(RADIOVERSION)) {
         snprintf(msgBuf, sizeof(msgBuf), "{\"onlineupdateavailable\":true,\"remoteVersion\":\"%s\"}", remoteVer.c_str());
       } else {
         snprintf(msgBuf, sizeof(msgBuf), "{\"onlineupdateavailable\":false,\"remoteVersion\":\"%s\"}", remoteVer.c_str());
@@ -1132,7 +1132,7 @@ void handleNotFound(AsyncWebServerRequest * request) {
       "var formAction='%s';\n"
       "var playMode='%s';\n"
       "var onlineupdatecapable=%s;\n",
-      YOVERSION,
+      RADIOVERSION,
       (network.status == CONNECTED && !config.emptyFS) ? "webboard" : "",
       (network.status == CONNECTED) ? "player" : "ap",
       onlineCapable

@@ -440,7 +440,7 @@ void Telnet::on_input(const char* str, uint8_t clientId) {
     }
   }
   if (strcmp(str, "sys.version") == 0 || strcmp(str, "version") == 0) {
-    printf(clientId, "##SYS.VERSION#: %s\n> ", YOVERSION);
+    printf(clientId, "##SYS.VERSION#: %s\n> ", RADIOVERSION);
     return;
   }
   if (strcmp(str, "sys.boot") == 0 || strcmp(str, "boot") == 0 || strcmp(str, "reboot") == 0) {

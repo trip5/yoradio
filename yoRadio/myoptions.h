@@ -1,26 +1,16 @@
 #ifndef myoptions_h
 #define myoptions_h
 
-
 /* - - - = = = - - - Choose the Radio (defined by platformio.ini env) - - - = = = - - - */
 /* automatic builds define the board - - - be sure to comment all lines after debugging */
 
-//#define DEBUG_MYOPTIONS                              // uncomment to debug myoptions.h
+//#define DEBUG_MYOPTIONS                              // uncomment to debug myoptions.h -- and uncomment one option below!
 //#define ESP32_S3_TRIP5_SH1106_PCM_REMOTE             // Self-contained OLED with PCM, Remote
 //#define ESP32_S3_TRIP5_SH1106_PCM_1BUTTON            // Mini OLED with PCM, 1 Button, Speakers built-in
 //#define ESP32_S3_TRIP5_SSD1306X32_PCM_1BUTTON        // Mini Tiny OLED with PCM, 1 Button, Speakers built-in
 //#define ESP32_S3_TRIP5_SH1106_VS1053_3BUTTONS        // Ali Speaker with OLED, VS1053, 3 Buttons
 //#define ESP32_S3_TRIP5_ST7735_PCM_1BUTTON            // Color TFT (red board) with PCM I2S, 1 Button
 //#define ESP32_S3_TRIP5_ILI9488_PCM_1BUTTON           // Big Screen with PCM, 1 button
-
-
-/* --- UPDATE FILES --- */
-
-#define UPDATEURL "https://github.com/trip5/yoradio/releases/latest/download/" // + FIRMWARE for the file
-#define FILESURL "https://github.com/trip5/yoradio/releases/download/2025.07.23/" // + FILE for SPIFFS files (this version)
-#define CHECKUPDATEURL "https://github.com/trip5/yoradio/releases/latest/download/version.txt" // automatically extracted from options.h during Github workflow
-#define VERSIONSTRING "#define YOVERSION" // the file above should have a line that contains this followed by a version number
-
 
 /* --- FIRMWARE FILENAME & BOARD --- */
 

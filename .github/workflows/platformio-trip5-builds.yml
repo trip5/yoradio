@@ -1,4 +1,4 @@
-name: Platformio Build Trip5 Firmwares
+name: Platformio Build Firmwares
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
           python-version: '3.x'
           
       - name: Extract version
-        run: grep '#define YOVERSION ' yoRadio/src/core/options.h > version.txt
+        run: grep '#define RADIOVERSION ' yoRadio/src/core/options.h > version.txt
 
       - name: Install PlatformIO
         run: pip install platformio
@@ -74,8 +74,8 @@ jobs:
 
 #      - name: Prepare TEST-OTA version in options.h
 #        run: |
-#          # append “-OTA-TEST” inside the quotes of the YOVERSION line
-#          sed -i '/#define YOVERSION/ s/"\([^"]*\)"/"\1-OTA-TEST"/' yoRadio/src/core/options.h
+#          # append “-OTA-TEST” inside the quotes of the RADIOVERSION line
+#          sed -i '/#define RADIOVERSION/ s/"\([^"]*\)"/"\1-OTA-TEST"/' yoRadio/src/core/options.h
 
 #      - name: Prepare TEST-OTA PlatformIO builds in platformio.ini
 #        run: |
@@ -137,7 +137,7 @@ jobs:
               - [`esp32_s3_trip5_st7735_pcm_1button.bin`](https://trip5.github.io/yoradio-docs/docs/myoptions-generator.html?b=ESP32-S3-DevKitC-1_44Pin&r=72,2,3,4,6,11,36,43,49,51,52,53,54,75&i=1,2,3,4,15,16,17,22,23,24,25,26,27,28,29,30,39,45,46,47&v=10,9,-1,4,15,7,6,255,255,255,255,42,255,40,39,38,47,21,13,14)
               - [`esp32_s3_trip5_ili9488_pcm_1button.bin`](https://trip5.github.io/yoradio-docs/docs/myoptions-generator.html?b=ESP32-S3-DevKitC-1_44Pin&r=72,2,3,4,6,31,43,49,51,52,53,54,75&i=1,2,3,4,15,16,17,22,23,24,25,26,27,28,29,30,39,45,46,47&v=10,9,-1,4,15,7,6,255,255,255,255,42,255,40,39,38,47,21,2,1)
             ### Add Yours
-              - you can either fork my `trip5` repo and edit these files or request a build be added
+              - you can either fork my `ehradio` repo and edit these files or request a build be added
           files: |
             binaries/*.bin
             yoRadio/data/www/*
