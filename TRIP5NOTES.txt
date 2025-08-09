@@ -20,7 +20,20 @@ WebUI Graphics
 
 NEXT:
 
-WebUI fixes
+WebUI fixes:
+theme (colors)
+Graphics
+how does it look on mobile?
+
+hardware Display colors, too!
+
+Red: #C80C02 (Canada red)
+Red gradient: #A80C02 - #E80C02
+Blue: #003DA5 (Québec blue)
+Blue gradient: #003D85 #003EC5
+Green: #20C040 (Conventional Chaos Green)
+Green gradient: #20A040 #20E040
+
 
 NEXT BIG ADD:
 
